@@ -1,0 +1,13 @@
+{
+  "name": "sentinel-salud-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "reporte": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1",
+    "@types/node": "^22.10.2"
+  }
+}

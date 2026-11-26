@@ -1,0 +1,8 @@
+red,asn,organizacion,tipo
+100.64.0.0/16,AS64512,Operador movil 1 (ejemplo),movil
+100.65.0.0/16,AS64513,Operador movil 2 (ejemplo),movil
+198.18.0.0/16,AS64520,ISP residencial 1 (ejemplo),residencial
+198.19.0.0/16,AS64521,ISP residencial 2 (ejemplo),residencial
+203.0.113.0/24,AS64530,Proveedor de nube A (ejemplo),nube
+198.51.100.0/24,AS64540,VPN comercial B (ejemplo),vpn
+192.0.2.0/24,AS64550,Red institucional (ejemplo),institucional

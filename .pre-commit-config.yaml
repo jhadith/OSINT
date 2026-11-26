@@ -1,0 +1,23 @@
+# Revisiones antes de cada commit, en tu equipo.
+# Instalar una vez:  pip install pre-commit  &&  pre-commit install
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=20000]
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+        exclude: ^web/tsconfig.*\.json$
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.4
+    hooks:
+      - id: bandit
+        args: [-q, -ll]
+        files: ^(backend/app|motor/motor)/

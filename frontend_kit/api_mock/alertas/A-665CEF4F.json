@@ -1,0 +1,78 @@
+{
+  "caso": "Caso 1",
+  "regla": "fuerza_bruta",
+  "titulo": "Fuerza bruta por Telnet",
+  "gravedad": "Alta",
+  "puntaje": 15,
+  "fuente": "correlacion",
+  "inicio": "2026-10-10 00:00:00",
+  "fin": "2026-10-10 00:05:00",
+  "ip_origen": "10.10.100.10",
+  "cuenta": "XYZ9999021",
+  "usuario_firewall": "U-FDDDD0",
+  "persona": "P-32FCDF",
+  "tecnicas": [
+    "T1110"
+  ],
+  "eventos_firewall": 2000,
+  "eventos_sistema_medico": 2000,
+  "resumen": "2.000 intentos por Telnet en 5 min desde una IP del segmento del servidor; 2.000 accesos fallidos en el sistema médico.",
+  "acciones": [
+    "Bloquear Telnet hacia el servidor",
+    "Bloqueo por intentos fallidos y MFA",
+    "Revisar el equipo 10.10.100.10"
+  ],
+  "riesgo": "R4",
+  "cid": [
+    "Confidencialidad",
+    "Disponibilidad"
+  ],
+  "linea": [
+    {
+      "fecha_hora": "2026-10-10 00:00:00",
+      "fuente": "Firewall",
+      "evento": "Telnet puerto 23 negado",
+      "cantidad": 400
+    },
+    {
+      "fecha_hora": "2026-10-10 00:01:00",
+      "fuente": "Firewall",
+      "evento": "Telnet puerto 23 negado",
+      "cantidad": 400
+    },
+    {
+      "fecha_hora": "2026-10-10 00:02:00",
+      "fuente": "Firewall",
+      "evento": "Telnet puerto 23 negado",
+      "cantidad": 400
+    },
+    {
+      "fecha_hora": "2026-10-10 00:03:00",
+      "fuente": "Firewall",
+      "evento": "Telnet puerto 23 negado",
+      "cantidad": 400
+    },
+    {
+      "fecha_hora": "2026-10-10 00:04:00",
+      "fuente": "Firewall",
+      "evento": "Telnet puerto 23 negado",
+      "cantidad": 400
+    },
+    {
+      "fecha_hora": "2026-10-10 00:00:00",
+      "fuente": "Sistema médico",
+      "evento": "Acceso fallido",
+      "cantidad": 2000
+    }
+  ],
+  "id": "A-665CEF4F",
+  "estado": "pendiente",
+  "tecnicas_detalle": [
+    {
+      "id": "T1110",
+      "nombre": "Fuerza bruta",
+      "tactica": "Acceso a credenciales"
+    }
+  ],
+  "aviso_telegram": false
+}

@@ -1,0 +1,39 @@
+{
+  "caso": null,
+  "regla": "cuentas_genericas",
+  "titulo": "Cuentas genéricas compartidas por muchas personas",
+  "gravedad": "Media",
+  "puntaje": 9,
+  "fuente": "sistema_medico",
+  "inicio": "2026-10-01 00:00:00",
+  "fin": "2026-10-31 23:59:59",
+  "ip_origen": "",
+  "cuenta": "XYZ9999xxx",
+  "usuario_firewall": "",
+  "persona": "",
+  "tecnicas": [
+    "T1078"
+  ],
+  "eventos_firewall": 0,
+  "eventos_sistema_medico": 0,
+  "resumen": "Cuentas genéricas usadas con hasta 1.929 nombres de persona distintos.",
+  "acciones": [
+    "Asignar cada cuenta a una persona o eliminarla"
+  ],
+  "riesgo": "R1",
+  "cid": [
+    "Confidencialidad",
+    "Integridad"
+  ],
+  "linea": [],
+  "id": "A-A870168F",
+  "estado": "pendiente",
+  "tecnicas_detalle": [
+    {
+      "id": "T1078",
+      "nombre": "Cuentas válidas",
+      "tactica": "Acceso inicial"
+    }
+  ],
+  "aviso_telegram": false
+}

@@ -1,0 +1,39 @@
+{
+  "caso": null,
+  "regla": "cambios_privilegios",
+  "titulo": "Cambios de permisos y activaciones masivas",
+  "gravedad": "Media",
+  "puntaje": 8,
+  "fuente": "sistema_medico",
+  "inicio": "2026-10-01 00:00:00",
+  "fin": "2026-10-31 23:59:59",
+  "ip_origen": "",
+  "cuenta": "MINAD, CMAP09002",
+  "usuario_firewall": "",
+  "persona": "",
+  "tecnicas": [
+    "T1098"
+  ],
+  "eventos_firewall": 0,
+  "eventos_sistema_medico": 1229,
+  "resumen": "131 cambios de nivel de usuario (MINAD) y 1.098 activaciones de usuarios (CMAP09002).",
+  "acciones": [
+    "Doble aprobación para cambios de privilegio",
+    "Revisar los cambios hechos en octubre"
+  ],
+  "riesgo": "R6",
+  "cid": [
+    "Integridad"
+  ],
+  "linea": [],
+  "id": "A-E9202889",
+  "estado": "pendiente",
+  "tecnicas_detalle": [
+    {
+      "id": "T1098",
+      "nombre": "Manipulación de cuentas",
+      "tactica": "Persistencia"
+    }
+  ],
+  "aviso_telegram": false
+}

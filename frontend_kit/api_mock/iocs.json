@@ -1,0 +1,81 @@
+{
+  "ips": [
+    {
+      "valor": "10.10.100.50",
+      "alerta": "A-BB607F4E",
+      "tecnicas": [
+        "T1021.004",
+        "T1048"
+      ]
+    },
+    {
+      "valor": "10.10.100.40",
+      "alerta": "A-41481881",
+      "tecnicas": [
+        "T1078",
+        "T1021.004",
+        "T1213"
+      ]
+    },
+    {
+      "valor": "10.10.100.10",
+      "alerta": "A-665CEF4F",
+      "tecnicas": [
+        "T1110"
+      ]
+    },
+    {
+      "valor": "10.10.100.20",
+      "alerta": "A-BE661F33",
+      "tecnicas": [
+        "T1046",
+        "T1110"
+      ]
+    }
+  ],
+  "cuentas": [
+    {
+      "valor": "XYZ1111331",
+      "alerta": "A-BB607F4E"
+    },
+    {
+      "valor": "WXY1210010",
+      "alerta": "A-41481881"
+    },
+    {
+      "valor": "XYZ9999021",
+      "alerta": "A-665CEF4F"
+    },
+    {
+      "valor": "RIMODE1",
+      "alerta": "A-BE661F33"
+    }
+  ],
+  "reglas_sigma": [
+    {
+      "archivo": "01_fuerza_bruta_hacia_el_sistema_medico.yml",
+      "titulo": "Fuerza bruta hacia el sistema médico"
+    },
+    {
+      "archivo": "02_escaneo_de_servicios_del_servidor_medico.yml",
+      "titulo": "Escaneo de servicios del servidor médico"
+    },
+    {
+      "archivo": "03_rafaga_ssh_permitida_hacia_el_servidor_medico.yml",
+      "titulo": "Ráfaga SSH permitida hacia el servidor médico"
+    },
+    {
+      "archivo": "04_accesos_fallidos_masivos_en_el_sistema_medico.yml",
+      "titulo": "Accesos fallidos masivos en el sistema médico"
+    },
+    {
+      "archivo": "05_servicio_inseguro_permitido.yml",
+      "titulo": "Servicio inseguro permitido"
+    }
+  ],
+  "descargas": {
+    "stix": "/api/exportes/stix",
+    "misp": "/api/exportes/misp",
+    "sigma": "/api/exportes/sigma"
+  }
+}

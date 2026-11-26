@@ -1,0 +1,10 @@
+datos/
+salidas/
+restringido/
+*.csv
+.env
+venv/
+.venv/
+__pycache__/
+.pytest_cache/
+!motor/datos_fijos/*.csv
