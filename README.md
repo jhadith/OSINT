@@ -26,7 +26,7 @@ sentinel/
 ├── datos_ejemplo/  datos sintéticos para una demo rápida
 ├── frontend_kit/   contrato de la API, respuestas de ejemplo y tokens de diseño
 ├── scripts/        revisión de seguridad local
-└── .github/        pipeline DevSecOps y Dependabot
+└── .github/        pipeline DevSecOps
 ```
 
 ## Reglas que respeta
