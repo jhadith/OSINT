@@ -27,6 +27,9 @@ jobs:
   secretos:
     name: Secretos (Gitleaks)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # en un PR, Gitleaks lista los commits del PR
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,6 +38,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: false   # no comenta en el PR: así no necesita permiso de escritura
 
   # ---------- 3 y 4. Construir y probar: motor y backend (Python) ----------
   python:
