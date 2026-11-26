@@ -9,7 +9,7 @@ El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `
 | 1. Planificar | STRIDE, matriz de riesgos, requisitos LOPDP / HIPAA / ISO 27002 | Informe | `Informe_Propuesta_Sentinel_Salud_ESPE.docx` |
 | 2. Codificar | Secretos y datos fuera del repositorio | Gitleaks, `.gitignore`, pre-commit | Job `secretos` y `.pre-commit-config.yaml` |
 | 2. Codificar | Revisión por pares | Pull requests con revisión obligatoria | Protección de rama (ver abajo) |
-| 3. Construir | Dependencias con versión fija y sin vulnerabilidades conocidas | `requirements.txt` fijado, `pip-audit`, `npm audit`, Dependabot | Jobs `python` y `web`, `.github/dependabot.yml` |
+| 3. Construir | Dependencias con versión fija y sin vulnerabilidades conocidas | `requirements.txt` fijado, `pip-audit`, `npm audit`, Dependabot (mensual, agrupado, hacia `dev`, sin versiones mayores) | Jobs `python` y `web`, `.github/dependabot.yml` |
 | 4. Probar (estática) | Código Python inseguro | Bandit | Job `python` |
 | 4. Probar (estática) | SAST de Python y TypeScript | CodeQL (`security-extended`) | Job `codeql` |
 | 4. Probar (estática) | Calidad y deuda técnica | SonarCloud (opcional) | Job `sonarcloud` |
