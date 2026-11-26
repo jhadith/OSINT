@@ -34,7 +34,7 @@ El job `liberar` solo genera entregables si pasan `secretos`, `python`, `web`, `
 - Falla una prueba E2E de Playwright o una prueba de seguridad de la API en vivo.
 - ZAP encuentra un problema marcado como `FAIL` en `.zap/rules.tsv`: falta de CSP, clickjacking, XSS, inyección SQL o errores expuestos. Las advertencias quedan en el reporte sin bloquear.
 
-Los reportes quedan como artefactos de cada ejecución: `reportes-python` (pytest, cobertura y Bandit), `pruebas-dinamicas` (reporte HTML de Playwright con trazas, capturas y video de lo que falle, y JUnit de la API), `zap-*` (HTML y JSON de ZAP) y `entregables` (código, web compilada y `SHA256SUMS.txt`). Los hallazgos de CodeQL aparecen en **Security > Code scanning**.
+Los reportes quedan como artefactos de cada ejecución: `reportes-python` (pytest, cobertura y Bandit), `pruebas-dinamicas` (reporte HTML de Playwright con trazas, capturas y video de lo que falle, y JUnit de la API), `zap-*` (HTML y JSON de ZAP) y `entregables` (código, web compilada y `SHA256SUMS.txt`). Los hallazgos de CodeQL quedan en el artefacto `codeql-python` / `codeql-javascript-typescript` (archivo SARIF) y en el resumen de la ejecución; el job falla si hay alguno de nivel error. Si el administrador activa *Code scanning*, se puede quitar `upload: never` para verlos en **Security > Code scanning**.
 
 ## Publicar una versión
 
@@ -53,7 +53,7 @@ El job `liberar` crea un release de GitHub con los paquetes y su `SHA256SUMS.txt
    - Exige que pasen los checks `Secretos (Gitleaks)`, `Motor y backend (pytest, Bandit, pip-audit)`, `Consola web (lint, build, npm audit)`, `SAST (CodeQL)`, `Pruebas dinámicas (E2E Playwright y API en vivo)` y `DAST (OWASP ZAP sobre 127.0.0.1)`.
    - Bloquea los force push.
 3. **Avisos de seguridad**: en *Settings > Code security* activa Dependabot alerts, Secret scanning y Private vulnerability reporting.
-4. **CodeQL**: es gratis en repositorios públicos. Si el repositorio es privado necesita GitHub Advanced Security; sin eso, quita el job `codeql` de los `needs` de `liberar`.
+4. **CodeQL**: funciona sin configurar nada; guarda los resultados como artefacto. Para verlos en la pestaña Security, quien administra el repo debe activar *Settings > Code security > Code scanning* (en repos privados requiere GitHub Advanced Security) y quitar `upload: never` del workflow.
 5. **SonarCloud (opcional)**: crea el proyecto en sonarcloud.io con la cuenta de GitHub, completa `sonar-project.properties` y agrega el secreto `SONAR_TOKEN` en *Settings > Secrets and variables > Actions*. Sin ese secreto el job solo deja un aviso y no falla.
 6. **Clave de demo (opcional)**: el secreto `SENTINEL_CLAVE_DEMO` cambia la contraseña que usa el backend durante el escaneo DAST.
 
