@@ -1,0 +1,24 @@
+<testsuites id="" name="" tests="10" failures="0" skipped="0" errors="0" time="40.34137">
+<testsuite name="flujos.spec.ts" timestamp="2026-11-27T15:52:49.285Z" hostname="chromium" tests="10" failures="0" skipped="0" time="33.195" errors="0">
+<testcase name="Ingreso › muestra los roles y rechaza una contraseña equivocada" classname="flujos.spec.ts" time="0.756">
+</testcase>
+<testcase name="Analista del SOC › la vista ejecutiva resume los incidentes del análisis" classname="flujos.spec.ts" time="3.562">
+</testcase>
+<testcase name="Analista del SOC › no se puede decidir un caso sin motivo; al confirmar queda registrado" classname="flujos.spec.ts" time="3.775">
+</testcase>
+<testcase name="Analista del SOC › reidentificar exige un motivo de al menos 15 caracteres" classname="flujos.spec.ts" time="3.572">
+</testcase>
+<testcase name="Control de acceso por rol › el personal de salud no ve los casos del SOC" classname="flujos.spec.ts" time="3.493">
+</testcase>
+<testcase name="Control de acceso por rol › el personal de salud entra a su panorama, sin datos técnicos" classname="flujos.spec.ts" time="3.485">
+</testcase>
+<testcase name="Control de acceso por rol › el personal de salud puede verificar un enlace sospechoso" classname="flujos.spec.ts" time="3.522">
+</testcase>
+<testcase name="Control de acceso por rol › la auditoría ve las decisiones en la bitácora" classname="flujos.spec.ts" time="3.533">
+</testcase>
+<testcase name="Portal público de denuncias › una persona denuncia sin sesión y recibe un código; el SOC la ve en su bandeja" classname="flujos.spec.ts" time="3.705">
+</testcase>
+<testcase name="Portal público de denuncias › un texto con HTML malicioso no se ejecuta en la bandeja del SOC (XSS)" classname="flujos.spec.ts" time="3.792">
+</testcase>
+</testsuite>
+</testsuites>
