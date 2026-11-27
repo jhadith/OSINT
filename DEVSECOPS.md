@@ -137,6 +137,17 @@ El job `liberar` crea un release de GitHub con los paquetes y su `SHA256SUMS.txt
 
 ## Correr lo mismo en tu equipo
 
+> **Cobertura mínima de 95 % en motor y backend.** Las pruebas de PostgreSQL (`backend/tests/test_postgres.py` y
+> `test_bd_postgres.py`) necesitan una base real; el pipeline levanta una sola. En tu equipo, sin PostgreSQL esas
+> pruebas se omiten y la cobertura del backend queda cerca de 93,6 %, así que pytest marcará que no llega al
+> mínimo. Para correrlo igual que en el pipeline:
+>
+> ```bash
+> docker run -d --rm --name pg-pruebas -e POSTGRES_PASSWORD=clave -e POSTGRES_DB=sentinel_test \
+>   -p 127.0.0.1:55432:5432 postgres:16-alpine
+> export SENTINEL_TEST_PG_URL=postgresql://postgres:clave@127.0.0.1:55432/sentinel_test
+> ```
+
 Linux o macOS:
 
 ```bash

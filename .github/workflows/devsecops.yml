@@ -73,8 +73,24 @@ jobs:
   python:
     name: Motor y backend (pytest, Bandit, pip-audit)
     runs-on: ubuntu-latest
+    # PostgreSQL real para probar app/bd.py y la migración (tests/test_postgres.py y test_bd_postgres.py).
+    # Imagen fijada por digest; la clave es solo de este runner y cambia en cada ejecución.
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+        env:
+          POSTGRES_DB: sentinel_test
+          POSTGRES_PASSWORD: ci-${{ github.run_id }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       SENTINEL_ESTADO: ${{ github.workspace }}/.ci/estado
+      SENTINEL_TEST_PG_URL: postgresql://postgres:ci-${{ github.run_id }}@localhost:5432/sentinel_test
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
