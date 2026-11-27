@@ -4,6 +4,8 @@
 # Todo corre en el runner de GitHub contra 127.0.0.1: nunca contra sistemas reales.
 name: devsecops
 
+# Todas las acciones van fijadas por SHA completo (con la versión en el comentario):
+# si alguien mueve la etiqueta de una acción, aquí sigue corriendo el mismo código.
 on:
   push:
     branches: [main, dev, Pruebas]
@@ -31,10 +33,10 @@ jobs:
       contents: read
       pull-requests: read   # en un PR, Gitleaks lista los commits del PR
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
@@ -47,8 +49,8 @@ jobs:
     env:
       SENTINEL_ESTADO: ${{ github.workspace }}/.ci/estado
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -71,7 +73,7 @@ jobs:
           python -m bandit -q -r backend/app motor/motor -ll
       - name: Dependencias con vulnerabilidades conocidas (pip-audit)
         run: pip-audit -r backend/requirements.txt --desc --format columns
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: reportes-python
@@ -86,8 +88,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -105,7 +107,7 @@ jobs:
           if grep -rniI "iess" src index.html | grep -v "replace(/iess/"; then
             echo "::error::La interfaz no debe mencionar a la institución."; exit 1
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: web-dist
           path: web/dist/
@@ -124,14 +126,14 @@ jobs:
       matrix:
         language: [python, javascript-typescript]
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@74c1aea9df7c0f02e9b7bfe4a8935abf2e5e3aa6 # v3
         with:
           languages: ${{ matrix.language }}
           queries: security-extended
       # El repositorio no tiene "Code scanning" activado, así que los resultados no se suben a GitHub:
       # se guardan como artefacto y el job falla si CodeQL encuentra algo de nivel "error".
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@74c1aea9df7c0f02e9b7bfe4a8935abf2e5e3aa6 # v3
         with:
           category: /language:${{ matrix.language }}
           upload: never
@@ -151,7 +153,7 @@ jobs:
             echo "::error::CodeQL encontró $graves hallazgos de nivel error. Descarga el artefacto codeql-${{ matrix.language }} para verlos."
             exit 1
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: codeql-${{ matrix.language }}
@@ -168,19 +170,19 @@ jobs:
       SENTINEL_ESTADO: ${{ github.workspace }}/.ci/estado
       SENTINEL_CLAVE_DEMO: ${{ secrets.SENTINEL_CLAVE_DEMO || 'clave-solo-para-ci' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: web-dist
           path: web/dist
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: |
             backend/requirements.txt
             motor/requirements.txt
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -203,7 +205,7 @@ jobs:
       - name: Seguridad de la API en vivo (pytest + httpx)
         working-directory: pruebas_dinamicas/api
         run: python -m pytest -v --junitxml=../../reportes/pytest-api-vivo.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: pruebas-dinamicas
@@ -225,12 +227,12 @@ jobs:
       SENTINEL_ESTADO: ${{ github.workspace }}/.ci/estado
       SENTINEL_CLAVE_DEMO: ${{ secrets.SENTINEL_CLAVE_DEMO || 'clave-solo-para-ci' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: web-dist
           path: web/dist
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -245,7 +247,7 @@ jobs:
           for _ in $(seq 1 30); do curl -sf http://127.0.0.1:8000/api/acceso/roles >/dev/null && exit 0; sleep 2; done
           cat ../uvicorn.log; exit 1
       - name: ZAP baseline (consola)
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
         with:
           target: http://127.0.0.1:8000/
           rules_file_name: .zap/rules.tsv
@@ -254,7 +256,7 @@ jobs:
           fail_action: true
           artifact_name: zap-baseline-consola
       - name: ZAP baseline (portal de denuncias)
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
         with:
           target: http://127.0.0.1:8000/denuncia
           rules_file_name: .zap/rules.tsv
@@ -263,7 +265,7 @@ jobs:
           fail_action: true
           artifact_name: zap-baseline-denuncia
       - name: ZAP API scan (OpenAPI)
-        uses: zaproxy/action-api-scan@v0.9.0
+        uses: zaproxy/action-api-scan@77dfa9a647bb0f583e39d4df8531634d6ddd8df4 # v0.9.0
         with:
           target: http://127.0.0.1:8000/openapi.json
           format: openapi
@@ -276,31 +278,44 @@ jobs:
         if: always()
         run: cat uvicorn.log || true
 
-  # ---------- Calidad continua (opcional): SonarCloud ----------
-  sonarcloud:
-    name: Puerta de calidad (SonarCloud)
+  # ---------- 4. Probar (estática): SonarQube Cloud con la cobertura de pytest ----------
+  # Se activa con el secreto SONAR_TOKEN y las variables SONAR_ORGANIZATION y SONAR_PROJECT_KEY
+  # (Settings > Secrets and variables > Actions). Sin ellos, el job solo deja un aviso.
+  sonarqube:
+    name: SonarQube Cloud (SAST + cobertura)
     needs: [python]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
     steps:
-      - uses: actions/checkout@v4
-        if: env.SONAR_TOKEN != ''
+      - name: Sin configurar
+        if: env.SONAR_TOKEN == '' || env.SONAR_ORGANIZATION == '' || env.SONAR_PROJECT_KEY == ''
+        run: echo "::notice::Para activar SonarQube Cloud agrega el secreto SONAR_TOKEN y las variables SONAR_ORGANIZATION y SONAR_PROJECT_KEY (ver DEVSECOPS.md)."
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
         with:
-          fetch-depth: 0
-      - uses: actions/download-artifact@v4
-        if: env.SONAR_TOKEN != ''
+          fetch-depth: 0   # SonarQube Cloud usa el historial para el "código nuevo"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
         with:
           name: reportes-python
           path: reportes
-      - uses: SonarSource/sonarqube-scan-action@v5
-        if: env.SONAR_TOKEN != ''
-      - uses: SonarSource/sonarqube-quality-gate-action@v1
-        if: env.SONAR_TOKEN != ''
+      - name: Análisis (SAST, calidad y cobertura)
+        if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
+        uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703 # v5
+        with:
+          args: >
+            -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+      - name: Puerta de calidad
+        if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
+        uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1
         timeout-minutes: 5
-      - name: SonarCloud no configurado
-        if: env.SONAR_TOKEN == ''
-        run: echo "::notice::Agrega el secreto SONAR_TOKEN y completa sonar-project.properties para activar SonarCloud."
 
   # ---------- 5. Liberar: entregables con hash SHA-256 ----------
   liberar:
@@ -310,8 +325,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: web-dist
           path: web/dist
@@ -322,14 +337,14 @@ jobs:
           git archive --format=tar.gz --prefix=sentinel-salud/ -o "entregables/sentinel-salud-fuente-${VERSION}.tar.gz" HEAD
           tar -czf "entregables/sentinel-salud-web-${VERSION}.tar.gz" -C web dist
           cd entregables && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: entregables
           path: entregables/
           retention-days: 30
       - name: Publicar release (solo con etiqueta v*)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           files: entregables/*
           generate_release_notes: true
