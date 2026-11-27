@@ -104,7 +104,7 @@ _ROTULO = re.compile(r"(?i)\b(?:apellidos?\s*y\s*nombres?|nombres?\s*y\s*apellid
                      r"nombres?|apellidos?)\b\s*[:.-]?")
 _OTRO_ROTULO = re.compile(r"(?i)^\s*(?:fecha|lugar|naciona|sexo|estado|c[eé]dula|firma|profesi|instrucci|condici|"
                           r"domicilio|direcci|nui|no\.|n[uú]mero|documento|tipo\s*de\s*sangre|donante)")
-_NACIMIENTO = re.compile(r"(?im)(?P<et>fecha\s*de\s*nacimiento\s*[:.-]?)(?P<sep>[ \t]*\n?[ \t]*)(?P<valor>[^\n]*\d[^\n]*)")
+_NACIMIENTO = re.compile(r"(?im)(?P<et>fecha\s*de\s*nacimiento(?:[ \t]{0,3}[:.-])?)(?P<sep>[ \t]*(?:\n[ \t]*)?)(?P<valor>(?=\S)(?=[^\n\d]*\d)[^\n]*)")
 _SOLO_LETRAS = re.compile(rf"^[{_MAY}{_MIN}\s.'-]{{3,}}$")
 NOMBRES_COMUNES = set("""
 juan jose luis carlos jorge miguel pedro diego david daniel andres fernando francisco javier ricardo roberto mario

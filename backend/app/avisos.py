@@ -64,7 +64,7 @@ ENGANOS = ("enlace_sospechoso", "pedido_de_datos", "contenido_reportado")
 UMBRAL_ENGANOS = 3                       # denuncias de engaño en 7 días que disparan el aviso
 NIVELES = ("alto", "medio", "info")
 # Lo que nunca debe salir en un aviso: IPs, cédulas, correos y seudónimos del motor.
-_PROHIBIDO = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b|\b\d{10}\b|[\w.+-]+@[\w-]+\.[\w.]+|\bSEU-[0-9A-F]+\b", re.I)
+_PROHIBIDO = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b|\b\d{10}\b|[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}|\bSEU-[0-9A-F]+\b", re.I)
 
 
 def limpiar(texto: str) -> str:

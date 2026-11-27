@@ -90,7 +90,7 @@ export function Shell() {
             <Menu size={22} />
           </button>
           {activo?.resumen ? (
-            <button className="barra__datos" onClick={() => puede('cargar_datos') && ir('/cargar')} title="Análisis que muestra la consola">
+            <button className="barra__datos" onClick={() => { if (puede('cargar_datos')) void ir('/cargar') }} title="Análisis que muestra la consola">
               <Database size={16} aria-hidden />
               <span>
                 Datos de <strong>{fMes(activo.resumen.periodo.desde)}</strong>
@@ -108,7 +108,7 @@ export function Shell() {
             {puede('panorama_salud') && (
               <button
                 className={`campana ${sinLeer ? 'campana--activa' : ''}`}
-                onClick={() => ir('/mi-panorama')}
+                onClick={() => void ir('/mi-panorama')}
                 aria-label={sinLeer ? `${sinLeer} avisos de seguridad sin leer` : 'Avisos de seguridad: estás al día'}
                 title="Avisos de seguridad"
               >
@@ -146,9 +146,8 @@ export function Shell() {
             </div>
             <button
               className="boton boton--fantasma"
-              onClick={async () => {
-                await salir()
-                ir('/ingresar')
+              onClick={() => {
+                void salir().then(() => ir('/ingresar'))
               }}
             >
               <LogOut size={16} aria-hidden /> Salir
