@@ -1,4 +1,4 @@
-import { CalendarClock, ExternalLink, FileImage, Mic, Stethoscope, User, Video } from 'lucide-react'
+import { CalendarClock, ExternalLink, FileImage, Mic, Stethoscope, User } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
@@ -102,7 +102,7 @@ function DetalleDenuncia({ d, alGestionar }: { d: Denuncia; alGestionar: (d: Den
         <p className="contado-con">
           También lo contó con:{' '}
           {d.contadoCon.map((c, i) => {
-            const Icono = c === 'Video' ? Video : c === 'Foto' ? FileImage : Mic
+            const Icono = c === 'Foto' ? FileImage : Mic
             return (
               <span key={i} className="pildora">
                 <Icono size={12} aria-hidden /> {c}

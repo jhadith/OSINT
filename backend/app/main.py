@@ -57,8 +57,8 @@ async def cabeceras(request: Request, call_next):
     r.headers["X-Content-Type-Options"] = "nosniff"
     r.headers["X-Frame-Options"] = "DENY"
     r.headers["Referrer-Policy"] = "no-referrer"
-    # Cámara y micrófono solo para este mismo sitio: el portal de denuncias graba voz y video.
-    r.headers["Permissions-Policy"] = "camera=(self), microphone=(self), geolocation=()"
+    # Solo el micrófono, y solo para este mismo sitio: el portal de denuncias graba notas de voz. Cámara apagada.
+    r.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
     r.headers["Content-Security-Policy"] = ("default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
                                             "style-src 'self' "
                                             "'unsafe-inline'; script-src 'self'; connect-src 'self'; "
@@ -346,7 +346,7 @@ class DenunciaPublica(BaseModel):
     medio: Literal["", "llamada", "whatsapp", "mensaje", "correo", "en_persona", "redes_sociales"] = ""
     contacto_sospechoso: str = Field(default="", max_length=80)
     enlace: str = Field(default="", max_length=500)
-    # Nota de voz, video o foto subidos antes con /api/publico/adjuntos (hasta 3): llegan como texto protegido.
+    # Nota de voz o foto subidas antes con /api/publico/adjuntos (hasta 3): llegan como texto protegido.
     adjuntos: list[Annotated[str, Field(pattern=r"^adj-[0-9a-f]{16}$")]] = Field(default=[], max_length=3)
     acepta_privacidad: bool
 
@@ -372,12 +372,16 @@ def _pasar_a_texto(adjunto_id: str) -> dict:
 
 @app.post("/api/publico/adjuntos")
 async def subir_adjunto(request: Request, archivo: UploadFile = File(...)):
-    """Nota de voz, video o foto para una denuncia. Se revisan los bytes reales y el tamaño antes de guardar."""
+    """Nota de voz o foto para una denuncia. Se revisan los bytes reales y el tamaño antes de guardar.
+
+    El canal público no recibe video: con voz, foto o texto basta para contar lo que pasó."""
     denuncias.limitar("adj:" + (request.client.host if request.client else "local"), maximo=12,
                       mensaje="Subiste varios archivos seguidos desde este equipo. Intenta de nuevo en unos minutos.")
-    contenido = await archivo.read(adjuntos.MAX_VIDEO + 1)
-    if len(contenido) > adjuntos.MAX_VIDEO:
-        raise HTTPException(413, "El archivo supera los 50 MB. Graba un video más corto.")
+    contenido = await archivo.read(adjuntos.MAX_AUDIO + 1)
+    if len(contenido) > adjuntos.MAX_AUDIO:
+        raise HTTPException(413, "El archivo supera los 25 MB. Graba una nota de voz más corta.")
+    if adjuntos.tipo_de(contenido, archivo.filename or "") == "video":
+        raise HTTPException(400, "El canal acepta notas de voz y fotos. Cuenta lo que pasó por voz o por escrito.")
     try:
         reg = adjuntos.guardar(contenido, archivo.filename or "")
     except adjuntos.AdjuntoInvalido as e:

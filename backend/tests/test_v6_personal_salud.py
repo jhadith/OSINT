@@ -147,7 +147,18 @@ def test_ocr_real_de_una_cedula_sintetica(tmp_path, monkeypatch):
     assert "171234567" not in r["texto"] and "PEREZ" not in r["texto"].replace(" ", "")
 
 
-# ---------- denuncia por voz, video o foto (API) ----------
+def test_texto_pegado_del_celular_llega_sin_datos_ni_restos(entorno, analista):
+    pegado = ("Me llegó esto: Estimada afiliada con cedula 1712345675 (tel:1712345675), su pension sera suspendida. "
+              "Ingrese en http://actualizacion-pension.net (https://www.google.com/search?q=http://actualizacion-pension.net) "
+              "o llame al 0990123456 (tel:0990123456)")
+    cod = entorno.post("/api/publico/denuncias", json={"tipo": "pedido_de_datos", "descripcion": pegado,
+                                                       "acepta_privacidad": True}).json()["codigo"]
+    d = next(x for x in entorno.get("/api/denuncias", headers=analista).json() if x["codigo"] == cod)
+    assert d["descripcion"] == ("Me llegó esto: Estimada afiliada con cedula [Cédula protegida], su pension sera "
+                                "suspendida. Ingrese en http://actualizacion-pension.net o llame al [Teléfono protegido]")
+
+
+# ---------- denuncia por voz o foto (API) ----------
 def _con_lectura(monkeypatch, texto):
     """Simula la lectura local (OCR o transcripción) sin instalar las librerías."""
     monkeypatch.setattr(adjuntos, "_lib_requerida", lambda tipo: "simulada")
@@ -192,10 +203,14 @@ def test_nota_de_voz_pendiente_se_completa_cuando_hay_transcripcion(entorno, ana
     assert adjuntos.ruta(voz["id"]) is None and d["contadoCon"] == ["Nota de voz"]
 
 
-def test_video_y_archivos_rechazados(entorno, monkeypatch):
+def test_el_portal_no_recibe_video_ni_archivos_falsos(entorno, monkeypatch):
     _con_lectura(monkeypatch, "Este es el mensaje que me llegó")
-    r = entorno.post("/api/publico/adjuntos", files={"archivo": ("video.webm", io.BytesIO(webm_video()), "video/webm")})
-    assert r.status_code == 200 and r.json()["tipo"] == "video"
+    for nombre, contenido in (("video.webm", webm_video()), ("video.mp4", mp4())):
+        r = entorno.post("/api/publico/adjuntos", files={"archivo": (nombre, io.BytesIO(contenido), "video/mp4")})
+        assert r.status_code == 400 and "notas de voz y fotos" in r.text
+    # una nota de voz grabada en el navegador (WebM solo con audio) sí entra
+    r = entorno.post("/api/publico/adjuntos", files={"archivo": ("voz.webm", io.BytesIO(webm_audio()), "audio/webm")})
+    assert r.status_code == 200 and r.json()["tipo"] == "audio"
     assert entorno.post("/api/publico/adjuntos",
                         files={"archivo": ("x.jpg", io.BytesIO(b"<script>"), "image/jpeg")}).status_code == 400
 
@@ -207,9 +222,9 @@ def test_denuncia_con_adjunto_inexistente_o_de_mas(entorno):
     assert entorno.post("/api/publico/denuncias", json={**base, "adjuntos": ["adj-0123456789abcdef"] * 4}).status_code == 422
 
 
-def test_cabeceras_permiten_grabar_solo_en_el_mismo_sitio(entorno):
+def test_cabeceras_permiten_solo_el_microfono_en_el_mismo_sitio(entorno):
     r = entorno.get("/api/acceso/roles")
-    assert "camera=(self)" in r.headers["permissions-policy"] and "microphone=(self)" in r.headers["permissions-policy"]
+    assert "camera=()" in r.headers["permissions-policy"] and "microphone=(self)" in r.headers["permissions-policy"]
     assert "media-src 'self' blob:" in r.headers["content-security-policy"]
 
 

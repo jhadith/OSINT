@@ -116,10 +116,11 @@ def test_denuncia_enmascara_pii_antes_de_persistir(aislado):
                    "el celular 0987654321 y el teléfono +593987123456 para agendar.")
     r = denuncias.crear({"tipo": "pedido_de_datos", "descripcion": descripcion}, origen="ciudadano")
     texto = r["descripcion"]
-    assert "1712345675" not in texto and "17***" in texto
-    assert "juan.perez@gmail.com" not in texto and "***@gmail.com" in texto
-    assert "0987654321" not in texto and "0987***" in texto
-    assert "+593987123456" not in texto and "+593***" in texto
+    # al SOC no le llega ninguna parte del dato: ni prefijos ni dominios, solo la etiqueta
+    assert "1712345675" not in texto and "17***" not in texto and "[Cédula protegida]" in texto
+    assert "juan.perez" not in texto and "gmail.com" not in texto and "[Correo protegido]" in texto
+    assert "0987654321" not in texto and "0987" not in texto and texto.count("[Teléfono protegido]") == 2
+    assert "+593987123456" not in texto and "+593" not in texto
     assert "agendar" in texto                  # el resto del relato se conserva
     # lo que quedó guardado en la base es exactamente el texto enmascarado
     assert denuncias.una(r["codigo"])["descripcion"] == texto
@@ -130,8 +131,9 @@ def test_denuncia_con_servicios_fijos_y_formatos(aislado):
     r = denuncias.crear({"tipo": "otro", "descripcion": "Llamaron del 072345678 y de 593987123456."},
                         origen="ciudadano")
     texto = r["descripcion"]
-    assert "072345678" not in texto and "0723***" in texto
-    assert "593987123456" not in texto and "5939***" in texto
+    assert "072345678" not in texto and "0723" not in texto
+    assert "593987123456" not in texto and "5939" not in texto
+    assert texto == "Llamaron del [Teléfono protegido] y de [Teléfono protegido]."
 
 
 def test_denuncia_contrato_publico_y_hg07_intactos(aislado):

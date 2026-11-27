@@ -162,6 +162,13 @@ def _detectar(contenido: bytes, ext: str = "") -> tuple[str, str] | None:
     return None
 
 
+def tipo_de(contenido: bytes, nombre_archivo: str) -> str | None:
+    """«imagen», «audio» o «video» según los bytes reales; None si no es un formato conocido."""
+    n = str(nombre_archivo or "")
+    detectado = _detectar(bytes(contenido or b""), n.rsplit(".", 1)[-1].lower() if "." in n else "")
+    return detectado[0] if detectado else None
+
+
 def _validar_nombre(nombre) -> str:
     """Nombre de archivo sin path traversal: sin `..`, sin separadores, sin nulos, con extensión."""
     n = str(nombre if nombre is not None else "").strip()
