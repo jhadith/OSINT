@@ -186,7 +186,7 @@ Sin configurar nada, Sentinel usa SQLite (archivo en `backend\estado`). Para usa
 
 Las tablas se crean solas. La bitácora, las decisiones y los registros son **de solo agregar** también en PostgreSQL (un disparador rechaza cualquier UPDATE o DELETE, incluso desde psql). Si PostgreSQL no responde, la consola sigue funcionando sobre SQLite y el tablero muestra «SQLite (respaldo)» en lugar de «PostgreSQL». La caché de lecturas OSINT sigue en un archivo local porque es solo caché.
 
-## Personal de salud: «Mi panorama», avisos y denuncias con voz o video
+## Personal de salud: «Mi panorama», avisos y denuncias por texto, voz o foto
 
 - El usuario `salud` entra a **Mi panorama**: avisos de seguridad (con botón «Entendido», que queda en la bitácora),
   qué está pasando en el mes en lenguaje simple, cómo afecta a su trabajo, amenazas del sector y lo que reportó.
@@ -194,15 +194,17 @@ Las tablas se crean solas. La bitácora, las decisiones y los registros son **de
 - Los avisos se crean solos al terminar un análisis (posible fuga, cuenta usada de forma extraña, intentos de
   adivinar contraseñas, reventa de citas) y cuando llegan 3 o más denuncias de enlaces falsos en una semana.
   El analista también puede enviar uno desde un caso con «Avisar al personal de salud».
-- El portal `/denuncia` es anónimo (ya no pide correo ni teléfono). Se puede contar lo que pasó escribiendo,
-  grabando una nota de voz (hasta 3 min) o un video (hasta 60 s), y adjuntar fotos o capturas (máx. 3 archivos).
-- Cada foto, nota de voz o video se pasa a texto **en este mismo equipo** y el archivo original se borra. En ese
-  texto, las cédulas salen como `[Cédula protegida]`, los nombres como `[Nombre protegido]`, y también se protegen
-  correos, teléfonos y la fecha de nacimiento de un documento. La persona ve, antes de enviar, cómo le llega al equipo
-  de seguridad. Al SOC le llega la denuncia como siempre: solo texto, nunca el archivo.
-- Para leer fotos y pasar voz o video a texto, instala la lectura local (opcional, sin enviar nada a internet):
-  `pip install -r backend/requirements-ia.txt`. Las fotos funcionan al instante. Para voz y video, la primera vez se
+- El portal `/denuncia` es anónimo (ya no pide correo ni teléfono). Se puede contar lo que pasó escribiendo o
+  grabando una nota de voz (hasta 3 min), y adjuntar fotos o capturas (máx. 3 archivos). No recibe video.
+- Al SOC solo le llega lo que pasó, en texto. Lo escrito, la nota de voz y la foto pasan por la misma protección:
+  cédulas, nombres, correos y teléfonos salen completos como `[Cédula protegida]`, `[Nombre protegido]`,
+  `[Correo protegido]` y `[Teléfono protegido]` (sin dejar ninguna parte del dato), y la fecha de nacimiento de un
+  documento como `[Fecha protegida]`. También se quitan los restos de copiar y pegar, como «(tel:…)» o los enlaces
+  de búsqueda de Google. La voz y la foto se pasan a texto **en este mismo equipo** y el archivo original se borra.
+  La persona ve, antes de enviar, cómo le llega al equipo de seguridad.
+- Para leer fotos y pasar la voz a texto, instala la lectura local (opcional, sin enviar nada a internet):
+  `pip install -r backend/requirements-ia.txt`. Las fotos funcionan al instante. Para la voz, la primera vez se
   descarga el modelo de transcripción: hazlo antes de la demo con internet (con `set SENTINEL_WHISPER_MODEL=base`
   es más liviano). Sin esa instalación la denuncia igual llega, y el archivo se pasa a texto cuando se instale.
-- El navegador solo permite el micrófono y la cámara en `localhost` o con HTTPS. Para la demo, abre el portal
+- El navegador solo permite el micrófono en `localhost` o con HTTPS. Para la demo, abre el portal
   en la misma laptop donde corre el sistema. Desde un celular por la red hace falta HTTPS.

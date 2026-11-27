@@ -1,12 +1,12 @@
 """Canal de denuncias para afiliados y jubilados, y reportes del personal de salud.
 
-Mínimo necesario (LOPDP): no se pide cédula ni nombre. El texto libre se guarda enmascarado: cédula
-ecuatoriana, correos y teléfonos salen como *** conservando solo la estructura mínima (patrón de
-comun/pii.py de la fuente, adaptado). El contacto sospechoso que la persona reporta se guarda solo
+Mínimo necesario (LOPDP): no se pide cédula ni nombre. Al SOC solo le llega lo que pasó: en el texto,
+cédulas, nombres, correos y teléfonos se reemplazan por etiquetas completas ([Cédula protegida],
+[Nombre protegido], [Correo protegido], [Teléfono protegido]), sin dejar ninguna parte del dato. El contacto sospechoso que la persona reporta se guarda solo
 como seudónimo (para cruzarlo con el módulo de agendamiento, patrón HG-07) y en forma enmascarada
 para el SOC: el seudónimo se calcula SIEMPRE sobre el valor crudo, antes de cualquier máscara.
 La denuncia es anónima: no se pide ni se guarda un correo o teléfono para responder. La persona sigue su
-denuncia con el código que recibe. Puede contarlo por voz, por video o con una foto (app.adjuntos): eso se pasa a
+denuncia con el código que recibe. Puede contarlo por voz o con una foto (app.adjuntos): eso se pasa a
 texto en el mismo equipo, los datos personales salen como [Cédula protegida] o [Nombre protegido], y al SOC le
 llega solo ese texto, como cualquier denuncia escrita. El archivo original se borra en cuanto se pasa a texto.
 """
@@ -83,7 +83,7 @@ def _enmascarar_pii(texto: str) -> str:
     return t
 
 
-# --- Texto que sale de una foto, una nota de voz o un video: los datos personales se reemplazan por etiquetas ---
+# --- Texto escrito o que sale de una foto o una nota de voz: los datos personales se reemplazan por etiquetas ---
 PROTEGIDO = {"cedula": "[Cédula protegida]", "nombre": "[Nombre protegido]", "correo": "[Correo protegido]",
              "telefono": "[Teléfono protegido]", "fecha": "[Fecha protegida]"}
 # El OCR y la transcripción a veces separan los dígitos («171234567-5», «17 1234 5675»).
@@ -172,11 +172,21 @@ def _nombres_en_rotulos(texto: str) -> str:
     return "\n".join(out)
 
 
+# Restos de copiar y pegar un mensaje del celular o del correo: «0990… (tel:0990…)»,
+# «http://x.net (https://www.google.com/search?q=http://x.net)». Duplican el dato y no aportan nada.
+_PEGADO = re.compile(r"[ \t]*\((?:tel|sms|mailto|callto):[^)\s]*\)"
+                     r"|[ \t]*\(https?://(?:www\.)?google\.[a-z.]+/(?:search|url)\?[^)\s]*\)", re.I)
+
+
+def limpiar_pegado(texto: str) -> str:
+    return _PEGADO.sub("", texto or "")
+
+
 def proteger(texto: str) -> str:
-    """Texto que salió de una foto, nota de voz o video: cédulas, nombres, correos y teléfonos se reemplazan
+    """Texto escrito o que salió de una foto o nota de voz: cédulas, nombres, correos y teléfonos se reemplazan
     por etiquetas como [Cédula protegida] y [Nombre protegido]; la fecha de nacimiento de un documento sale como
     [Fecha protegida]. Lo demás se conserva tal cual."""
-    t = PATRON_EMAIL.sub(PROTEGIDO["correo"], texto or "")
+    t = PATRON_EMAIL.sub(PROTEGIDO["correo"], limpiar_pegado(texto))
     t = _cedulas(t)
     t = _CELULAR_FLEX.sub(PROTEGIDO["telefono"], t)
     t = _FIJO_FLEX.sub(PROTEGIDO["telefono"], t)
@@ -192,7 +202,7 @@ ETIQUETA_ADJUNTO = {"audio": "Nota de voz", "video": "Video", "imagen": "Foto"}
 
 
 def texto_de_adjuntos(regs: list[dict]) -> str:
-    """Lo que la persona contó por voz, video o foto, ya en texto protegido, para sumarlo a la denuncia."""
+    """Lo que la persona contó por voz o con una foto, ya en texto protegido, para sumarlo a la denuncia."""
     partes = []
     for r in regs:
         nombre = ETIQUETA_ADJUNTO.get(r["tipo"], "Archivo")
@@ -208,7 +218,7 @@ def unir(escrita: str, de_adjuntos: str) -> str:
 
 
 def completar_texto(codigo: str, de_adjuntos: str) -> dict:
-    """Cuando una nota de voz o un video se pasa a texto después, la denuncia se actualiza (nueva línea, solo agregar)."""
+    """Cuando una nota de voz se pasa a texto después, la denuncia se actualiza (nueva línea, solo agregar)."""
     d = dict(una(codigo))
     d["descripcion"] = unir(d.get("descripcion_escrita", ""), de_adjuntos)
     estado.agregar("denuncias", d)
@@ -219,7 +229,8 @@ def completar_texto(codigo: str, de_adjuntos: str) -> dict:
 
 def crear(datos: dict, origen: str = "ciudadano") -> dict:
     codigo = "DN-" + secrets.token_hex(3).upper()
-    escrita = _enmascarar_pii((datos.get("descripcion") or "").strip())
+    # Al SOC solo le llega lo que pasó: ningún dato personal, ni siquiera una parte (nada de «17***»).
+    escrita = proteger((datos.get("descripcion") or "").strip())
     sospechoso = (datos.get("contacto_sospechoso") or "").strip()
     enlace = (datos.get("enlace") or "").strip()
     reg = {

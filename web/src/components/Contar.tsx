@@ -1,4 +1,4 @@
-import { Camera, Circle, ImagePlus, Loader2, Mic, PenLine, RotateCcw, Square, Trash2, Video } from 'lucide-react'
+import { Circle, ImagePlus, Loader2, Mic, PenLine, RotateCcw, Square, Trash2 } from 'lucide-react'
 import { type ChangeEvent, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { TextoProtegido } from './TextoProtegido'
@@ -6,7 +6,7 @@ import { TextoProtegido } from './TextoProtegido'
 /** Grabación o foto de la denuncia. Se sube al momento y vuelve como texto con los datos personales protegidos. */
 export interface Adjunto {
   nombre: string
-  tipo: 'audio' | 'video' | 'imagen'
+  tipo: 'audio' | 'imagen'
   blob: Blob
   url: string
   estado: 'subiendo' | 'listo' | 'pendiente'
@@ -14,26 +14,22 @@ export interface Adjunto {
   texto?: string | null
 }
 
-type Modo = 'texto' | 'voz' | 'video'
+type Modo = 'texto' | 'voz'
 const MAX_ADJUNTOS = 3
-const TOPE_MB = { imagen: 15, audio: 25, video: 50 } as const
-const DURACION = { voz: 180, video: 60 } as const // segundos
+const TOPE_MB = { imagen: 15, audio: 25 } as const
+const DURACION = 180 // segundos de nota de voz
 
-const FORMATOS = {
-  voz: ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/mp4'],
-  video: ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'],
-}
+const FORMATOS = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/mp4']
 
-function extension(mime: string, modo: 'voz' | 'video') {
+function extension(mime: string) {
   if (mime.includes('ogg')) return 'ogg'
-  if (mime.includes('mp4')) return modo === 'voz' ? 'm4a' : 'mp4'
+  if (mime.includes('mp4')) return 'm4a'
   return 'webm'
 }
 
 function tipoDe(f: File): Adjunto['tipo'] | null {
   if (f.type.startsWith('image/')) return 'imagen'
   if (f.type.startsWith('audio/')) return 'audio'
-  if (f.type.startsWith('video/')) return 'video'
   return null
 }
 
@@ -49,7 +45,7 @@ interface Props {
   setAdjuntos: (fn: (a: Adjunto[]) => Adjunto[]) => void
 }
 
-/** «¿Cómo quieres contarlo?»: escribir, grabar una nota de voz o grabar un video, más fotos o capturas. */
+/** «¿Cómo quieres contarlo?»: escribir o grabar una nota de voz, más fotos o capturas. */
 export function Contar({ descripcion, setDescripcion, adjuntos, setAdjuntos }: Props) {
   const [modo, setModo] = useState<Modo>('texto')
   const [error, setError] = useState('')
@@ -84,7 +80,7 @@ export function Contar({ descripcion, setDescripcion, adjuntos, setAdjuntos }: P
     for (const f of Array.from(e.target.files ?? [])) {
       const tipo = tipoDe(f)
       if (!tipo) {
-        setError('Solo se aceptan fotos, audios o videos.')
+        setError('Solo se aceptan fotos o notas de voz. Si tienes un video, cuéntalo por voz o por escrito.')
         continue
       }
       agregar({ nombre: f.name, tipo, blob: f, url: URL.createObjectURL(f), estado: 'subiendo' })
@@ -100,7 +96,6 @@ export function Contar({ descripcion, setDescripcion, adjuntos, setAdjuntos }: P
           [
             ['texto', 'Escribir', PenLine],
             ['voz', 'Grabar voz', Mic],
-            ['video', 'Grabar video', Video],
           ] as const
         ).map(([id, texto, Icono]) => (
           <button
@@ -130,21 +125,19 @@ export function Contar({ descripcion, setDescripcion, adjuntos, setAdjuntos }: P
             />
           </label>
         )}
-        {modo !== 'texto' && (
-          <Grabadora key={modo} modo={modo} deshabilitada={lleno} alTerminar={agregar} alFallar={setError} />
-        )}
-        {modo !== 'texto' && (
+        {modo === 'voz' && <Grabadora deshabilitada={lleno} alTerminar={agregar} alFallar={setError} />}
+        {modo === 'voz' && (
           <p className="contar__nota">
-            Lo que grabes se pasa a texto y el archivo se borra. Si mencionas una cédula o un nombre, al equipo de seguridad le
-            llega como [Cédula protegida] o [Nombre protegido].
+            Lo que grabes se pasa a texto y el audio se borra. Al equipo de seguridad solo le llega lo que pasó: si mencionas una
+            cédula, un nombre o un teléfono, sale como [Cédula protegida], [Nombre protegido] o [Teléfono protegido].
           </p>
         )}
       </div>
 
       <div className="contar__extra">
         <label className={`boton boton--secundario ${lleno ? 'boton--apagado' : ''}`}>
-          <ImagePlus size={18} aria-hidden /> Adjuntar foto, captura, audio o video
-          <input type="file" accept="image/*,audio/*,video/*" onChange={elegir} disabled={lleno} hidden multiple />
+          <ImagePlus size={18} aria-hidden /> Adjuntar foto, captura o audio
+          <input type="file" accept="image/*,audio/*" onChange={elegir} disabled={lleno} hidden multiple />
         </label>
         <span className="contar__cupo">
           {adjuntos.length} de {MAX_ADJUNTOS} archivos
@@ -162,9 +155,8 @@ export function Contar({ descripcion, setDescripcion, adjuntos, setAdjuntos }: P
             <li key={a.url}>
               {a.tipo === 'imagen' && <img src={a.url} alt={`Adjunto ${i + 1}`} />}
               {a.tipo === 'audio' && <audio src={a.url} controls />}
-              {a.tipo === 'video' && <video src={a.url} controls playsInline />}
               <span className="contar__nombre">
-                {a.tipo === 'audio' ? 'Nota de voz' : a.tipo === 'video' ? 'Video' : 'Foto'} ·{' '}
+                {a.tipo === 'audio' ? 'Nota de voz' : 'Foto'} ·{' '}
                 {(a.blob.size / 1024 / 1024).toFixed(1)} MB
               </span>
               <div className={`contar__llega contar__llega--${a.estado}`} aria-live="polite">
@@ -200,12 +192,10 @@ export function Contar({ descripcion, setDescripcion, adjuntos, setAdjuntos }: P
 }
 
 function Grabadora({
-  modo,
   deshabilitada,
   alTerminar,
   alFallar,
 }: {
-  modo: 'voz' | 'video'
   deshabilitada: boolean
   alTerminar: (a: Adjunto) => void
   alFallar: (m: string) => void
@@ -215,7 +205,6 @@ function Grabadora({
   const [toma, setToma] = useState<Adjunto | null>(null)
   const flujo = useRef<MediaStream | null>(null)
   const grabador = useRef<MediaRecorder | null>(null)
-  const vista = useRef<HTMLVideoElement | null>(null)
   const reloj = useRef<number | null>(null)
 
   const apagar = () => {
@@ -231,7 +220,7 @@ function Grabadora({
       <div className="grabadora grabadora--sin">
         <p>
           Este navegador no deja grabar desde aquí (hace falta abrir la página en el mismo equipo o con una conexión segura).
-          Puedes grabar con la app de tu teléfono y adjuntar el archivo abajo.
+          Puedes grabar una nota de voz con tu teléfono y adjuntarla abajo, o escribir lo que pasó.
         </p>
       </div>
     )
@@ -239,26 +228,19 @@ function Grabadora({
   const empezar = async () => {
     setFase('pidiendo')
     try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: modo === 'video' ? { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } : false,
-      })
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       flujo.current = s
-      if (vista.current) {
-        vista.current.srcObject = s
-        void vista.current.play().catch(() => undefined)
-      }
-      const mime = FORMATOS[modo].find((f) => MediaRecorder.isTypeSupported(f)) ?? ''
-      const r = new MediaRecorder(s, mime ? { mimeType: mime, videoBitsPerSecond: 900_000, audioBitsPerSecond: 64_000 } : undefined)
+      const mime = FORMATOS.find((f) => MediaRecorder.isTypeSupported(f)) ?? ''
+      const r = new MediaRecorder(s, mime ? { mimeType: mime, audioBitsPerSecond: 64_000 } : undefined)
       const partes: Blob[] = []
       r.ondataavailable = (e) => e.data.size && partes.push(e.data)
       r.onstop = () => {
         apagar()
-        const tipo = r.mimeType || mime || (modo === 'voz' ? 'audio/webm' : 'video/webm')
+        const tipo = r.mimeType || mime || 'audio/webm'
         const blob = new Blob(partes, { type: tipo })
         const a: Adjunto = {
-          nombre: `${modo === 'voz' ? 'nota-de-voz' : 'video'}.${extension(tipo, modo)}`,
-          tipo: modo === 'voz' ? 'audio' : 'video',
+          nombre: `nota-de-voz.${extension(tipo)}`,
+          tipo: 'audio',
           blob,
           url: URL.createObjectURL(blob),
           estado: 'subiendo',
@@ -274,16 +256,12 @@ function Grabadora({
       reloj.current = window.setInterval(() => {
         const seg = Math.floor((Date.now() - inicio) / 1000)
         setSegundos(seg)
-        if (seg >= DURACION[modo] && r.state === 'recording') r.stop()
+        if (seg >= DURACION && r.state === 'recording') r.stop()
       }, 500)
     } catch {
       apagar()
       setFase('listo')
-      alFallar(
-        modo === 'voz'
-          ? 'No pudimos usar el micrófono. Revisa que le diste permiso al navegador.'
-          : 'No pudimos usar la cámara. Revisa que le diste permiso al navegador.',
-      )
+      alFallar('No pudimos usar el micrófono. Revisa que le diste permiso al navegador.')
     }
   }
 
@@ -292,16 +270,9 @@ function Grabadora({
 
   return (
     <div className={`grabadora grabadora--${fase}`}>
-      {modo === 'video' && fase !== 'grabado' && (
-        <video ref={vista} className="grabadora__vista" muted playsInline aria-label="Vista previa de la cámara" />
-      )}
       {fase === 'grabado' && toma && (
         <>
-          {toma.tipo === 'video' ? (
-            <video src={toma.url} className="grabadora__vista" controls playsInline />
-          ) : (
-            <audio src={toma.url} controls className="grabadora__audio" />
-          )}
+          <audio src={toma.url} controls className="grabadora__audio" />
           <div className="grabadora__acciones">
             <button
               type="button"
@@ -342,25 +313,23 @@ function Grabadora({
               className="grabadora__boton"
               onClick={empezar}
               disabled={deshabilitada || fase === 'pidiendo'}
-              aria-label={modo === 'voz' ? 'Empezar a grabar la voz' : 'Empezar a grabar el video'}
+              aria-label="Empezar a grabar la voz"
             >
-              {modo === 'voz' ? <Mic size={34} aria-hidden /> : <Camera size={34} aria-hidden />}
+              <Mic size={34} aria-hidden />
             </button>
           )}
           <div className="grabadora__estado" aria-live="polite">
             {fase === 'grabando' ? (
               <>
                 <Circle size={12} aria-hidden fill="currentColor" className="grabadora__rec" /> Grabando {mm(segundos)} de{' '}
-                {mm(DURACION[modo])}. Toca el cuadrado para terminar.
+                {mm(DURACION)}. Toca el cuadrado para terminar.
               </>
             ) : fase === 'pidiendo' ? (
-              'Dale permiso al navegador para usar el ' + (modo === 'voz' ? 'micrófono.' : 'micrófono y la cámara.')
+              'Dale permiso al navegador para usar el micrófono.'
             ) : deshabilitada ? (
               'Ya tienes 3 archivos. Quita uno para grabar otro.'
-            ) : modo === 'voz' ? (
-              `Toca el micrófono y cuéntanos qué pasó. Hasta ${DURACION.voz / 60} minutos.`
             ) : (
-              `Toca la cámara para grabar. Hasta ${DURACION.video} segundos. Puedes mostrar el mensaje que recibiste.`
+              `Toca el micrófono y cuéntanos qué pasó. Hasta ${DURACION / 60} minutos.`
             )}
           </div>
         </div>
