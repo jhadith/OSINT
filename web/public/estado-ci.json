@@ -1,0 +1,18 @@
+{
+  "generado": "2026-11-27T05:58:00Z",
+  "ejecucion": "ejemplo",
+  "rama": "main",
+  "commit": "sin-ejecucion",
+  "origen": "ejemplo",
+  "estado": "correcto",
+  "checks": [
+    { "id": "secretos", "nombre": "Secretos (Gitleaks)", "resultado": "success", "detalle": "Sin secretos en el código" },
+    { "id": "lint", "nombre": "Lint (backend ruff y frontend oxlint)", "resultado": "success", "detalle": "Sin advertencias" },
+    { "id": "python", "nombre": "Motor y backend (pytest, Bandit, pip-audit)", "resultado": "success", "detalle": "Cobertura mínima 95 %" },
+    { "id": "web", "nombre": "Consola web (pruebas, cobertura, build, npm audit)", "resultado": "success", "detalle": "Cobertura mínima 95 %" },
+    { "id": "codeql", "nombre": "SAST (CodeQL)", "resultado": "success", "detalle": "Sin hallazgos de nivel error" },
+    { "id": "pruebas-dinamicas", "nombre": "Pruebas dinámicas (E2E Playwright y API en vivo)", "resultado": "success", "detalle": "App levantada en 127.0.0.1:8010" },
+    { "id": "dast", "nombre": "DAST (OWASP ZAP sobre 127.0.0.1)", "resultado": "success", "detalle": "Sin reglas FAIL" },
+    { "id": "sonarqube", "nombre": "SonarQube Cloud (SAST + cobertura)", "resultado": "success", "detalle": "Puerta de calidad superada" }
+  ]
+}

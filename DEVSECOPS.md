@@ -76,6 +76,16 @@ python scripts/reporte_sonar.py                     # rama principal; o --pr 31 
 
 En Windows (CMD), usa `set SONAR_TOKEN=...` y `set SONAR_PROJECT_KEY=...`. El reporte queda en `reporte_sonarqube/`, que no se sube a Git.
 
+## Panel de estado de CI en la consola
+
+El módulo **Estado de CI** (`/ci`, menú *Técnico*) muestra el resultado de los ocho checks de la última ejecución: cuáles pasaron, cuáles fallaron o se cancelaron y cuáles quedaron omitidos. Solo lo ve el rol **TI**, mediante el permiso específico `ver_ci` (los analistas no lo tienen).
+
+El job `resumen-ci` escribe `web/public/estado-ci.json` al terminar cada corrida. Corre con `if: always()` para que también aparezcan los jobs omitidos, por ejemplo SonarQube cuando no está configurado. El backend solo lee ese archivo en `GET /api/ci/estado`: no consulta GitHub ni usa tokens, así que el prototipo sigue funcionando sin red. Antes de la primera ejecución real se incluye un JSON de ejemplo con `origen: "ejemplo"` para poder revisar la pantalla.
+
+El job `resumen-ci` **no se exige** en la protección de rama: siempre corre y no bloquea el merge. El resumen real se publica también como artefacto `estado-ci` y se copia dentro de la web compilada de los entregables.
+
+Para probarlo en local, inicia sesión como `ti` (contraseña `demo2026`) y abre **Técnico > Estado de CI**.
+
 ## Actualizar dependencias de Python
 
 El pipeline no instala desde `requirements.txt`, sino desde archivos de bloqueo con hashes:
@@ -107,7 +117,7 @@ El job `liberar` crea un release de GitHub con los paquetes y su `SHA256SUMS.txt
 1. **Actions**: en *Settings > Actions > General*, permite que corran los workflows.
 2. **Protección de la rama `main`**: en *Settings > Branches > Add rule*:
    - Exige pull request con al menos 1 aprobación.
-   - Exige que pasen los checks `Secretos (Gitleaks)`, `Lint (backend ruff y frontend oxlint)`, `Motor y backend (pytest, Bandit, pip-audit)`, `Consola web (pruebas, cobertura, build, npm audit)`, `SAST (CodeQL)`, `Pruebas dinámicas (E2E Playwright y API en vivo)`, `DAST (OWASP ZAP sobre 127.0.0.1)` y `SonarQube Cloud (SAST + cobertura)`.
+   - Exige que pasen los checks `Secretos (Gitleaks)`, `Lint (backend ruff y frontend oxlint)`, `Motor y backend (pytest, Bandit, pip-audit)`, `Consola web (pruebas, cobertura, build, npm audit)`, `SAST (CodeQL)`, `Pruebas dinámicas (E2E Playwright y API en vivo)`, `DAST (OWASP ZAP sobre 127.0.0.1)` y `SonarQube Cloud (SAST + cobertura)`. No exigas `Resumen de CI para la consola`: corre siempre con `if: always()` y solo genera el JSON del panel.
    - Bloquea los force push.
 3. **Avisos de seguridad**: en *Settings > Code security* activa Secret scanning y Private vulnerability reporting. Las actualizaciones automáticas de Dependabot no se usan: las versiones se actualizan a mano y `pip-audit` / `npm audit` bloquean el pipeline si alguna tiene una vulnerabilidad conocida.
 4. **CodeQL**: funciona sin configurar nada; guarda los resultados como artefacto. Para verlos en la pestaña Security, quien administra el repo debe activar *Settings > Code security > Code scanning* (en repos privados requiere GitHub Advanced Security) y quitar `upload: never` del workflow.

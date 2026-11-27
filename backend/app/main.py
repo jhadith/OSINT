@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
-from . import analisis, config, datos, denuncias, ejecutivo, estado, riesgos, seguridad, telegram, verificar
+from . import analisis, ci, config, datos, denuncias, ejecutivo, estado, riesgos, seguridad, telegram, verificar
 from .seguridad import ROLES, Sesion, requiere
 
 app = FastAPI(title="Sentinel Salud API", version="2.0.0")
@@ -393,6 +393,12 @@ def reportar(r: Reporte, s: Sesion = Depends(requiere("verificar"))):
 @app.get("/api/bitacora")
 def bitacora(s: Sesion = Depends(requiere("auditar"))):
     return list(reversed(estado.leer("bitacora")))
+
+
+# ---------- estado de la integración continua ----------
+@app.get("/api/ci/estado")
+def ci_estado(s: Sesion = Depends(requiere("ver_ci"))):
+    return ci.estado()
 
 
 def _fijo(nombre: str):

@@ -149,6 +149,7 @@ describe('rutas de la API', () => {
       [() => api.denuncias(), '/api/denuncias'],
       [() => api.gestionar('DN-1', 'atendida', 'gracias', ''), '/api/denuncias/DN-1/gestion'],
       [() => api.inteligencia(), '/api/inteligencia'],
+      [() => api.ciEstado(), '/api/ci/estado'],
       [() => api.verificarEnlace('https://a.com'), '/api/verificar/enlace'],
       [() => api.reportar('https://a.com', 'malicioso', ''), '/api/verificar/reportar'],
       [() => api.bitacora(), '/api/bitacora'],

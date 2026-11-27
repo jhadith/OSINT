@@ -15,6 +15,9 @@ describe('navegación por rol', () => {
     expect(new Set(rutas).size).toBe(rutas.length)
     expect(NAV.every((g) => g.items.length > 0)).toBe(true)
   })
+  it('el panel de CI es solo para TI', () => {
+    expect(TODAS.find((i) => i.ruta === '/ci')?.permiso).toBe('ver_ci')
+  })
   it('las áreas del ingreso usan permisos reales', () => {
     expect(AREAS.map((a) => a.permiso)).toContain('reidentificar')
     expect(AREAS.length).toBeGreaterThan(5)

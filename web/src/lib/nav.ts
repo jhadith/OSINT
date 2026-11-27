@@ -65,6 +65,7 @@ export const NAV: Grupo[] = [
     items: [
       { ruta: '/cargar', nombre: 'Cargar datos', icono: FolderInput, permiso: 'cargar_datos', ayuda: 'Subir y procesar registros' },
       { ruta: '/inteligencia', nombre: 'Reglas e indicadores', icono: Network, permiso: 'tecnico', ayuda: 'Sigma, STIX y MISP' },
+      { ruta: '/ci', nombre: 'Estado de CI', icono: ShieldCheck, permiso: 'ver_ci', ayuda: 'Resultado de las pruebas de GitHub Actions' },
     ],
   },
   {
