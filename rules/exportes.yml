@@ -1,0 +1,4 @@
+# Parámetros de los exportes CTI de la consola (S11/T13: barrido anti-hardcode —
+# la fecha de creación de las reglas Sigma ya no vive como literal en consola.py).
+# La estampa el motor en cada regla Sigma exportada; el SOC la ajusta aquí.
+SIGMA_FECHA: "2026-11-26"

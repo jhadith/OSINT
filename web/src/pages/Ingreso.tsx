@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import type { Rol, Sesion } from '../api/types'
-import { Marca } from '../components/Marca'
 import { AREAS, inicioDe } from '../lib/nav'
 import { useSesion } from '../lib/sesion'
 
@@ -55,13 +54,19 @@ export default function Ingreso() {
   return (
     <div className="ingreso">
       <section className="ingreso__lado">
-        <Marca />
+        <div className="ingreso__escudo">
+          <div className="ingreso__halo" aria-hidden />
+          <img src="/logo-espethreat.png" alt="Escudo del equipo ESPEThreat, Universidad de las Fuerzas Armadas ESPE" />
+        </div>
+        <svg className="ingreso__ecg" viewBox="0 0 600 70" aria-hidden preserveAspectRatio="none">
+          <path pathLength={1} d="M0 46h170l9-16 9 28 11-54 11 58 9-16h112l9-16 9 28 11-54 11 58 9-16h211" />
+        </svg>
         <div className="ingreso__mensaje">
-          <h1>Cada persona ve solo lo que necesita para su trabajo.</h1>
-          <p>
-            Sentinel Salud vigila los registros del sistema médico y de la red para proteger los datos de salud de
-            afiliados y jubilados. El acceso se concede por rol: lo demás queda bloqueado y cada acción queda registrada.
+          <p className="ingreso__producto">
+            Sentinel <b>Salud</b>
           </p>
+          <h1>Cada persona ve solo lo que necesita para su trabajo.</h1>
+          <p>Vigila la red y el sistema médico para proteger los datos de afiliados y jubilados. Lo demás queda cerrado y cada acción queda registrada.</p>
         </div>
         <Link to="/denuncia" className="ingreso__publico">
           <Megaphone size={22} aria-hidden />
@@ -70,9 +75,6 @@ export default function Ingreso() {
             Denuncia la venta de citas o una llamada sospechosa sin iniciar sesión.
           </span>
         </Link>
-        <svg className="ingreso__ecg" viewBox="0 0 600 60" aria-hidden preserveAspectRatio="none">
-          <path d="M0 40h150l8-14 8 24 10-46 10 50 8-14h120l8-14 8 24 10-46 10 50 8-14h232" />
-        </svg>
       </section>
 
       <section className="ingreso__form" aria-labelledby="t-ingreso">

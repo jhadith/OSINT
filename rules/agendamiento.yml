@@ -1,0 +1,16 @@
+# Umbrales del módulo de agendamiento médico HBVF (informe apartado 14; S3/S12).
+# Patrones HG-01..HG-07. Nunca hay acciones automáticas: todo sale como revisión humana.
+
+CITAS_REDES_OCULTAS: [nube, vpn]  # red oculta como señal auxiliar de HG-06
+CITAS_CADENA_MIN: 5               # sesiones seguidas a <= 5 min con la misma huella y red
+CITAS_CADENA_PREVALENCIA: 0.05    # ...si esa combinación no es de las comunes
+CITAS_CADENA_SESIONES: 3          # cadena: >= 3 sesiones seguidas con IPs distintas
+CITAS_REASIGNACION_SEG: 600       # cancelada y reservada para otro paciente en <= 10 min (HG-05)
+CITAS_HORA_APERTURA: 7            # hora en que se abre la agenda (HG-04)
+CITAS_AL_ABRIR: 3                 # reservas en los primeros minutos de apertura
+CITAS_MINUTOS_APERTURA: 5
+CITAS_PACIENTES_SEMANA: 4         # más de 4 pacientes distintos por semana (HG-01)
+CITAS_LIMITE_30_DIAS: 10          # límite institucional anunciado: 10 citas en 30 días
+CITAS_IPS_ROTACION: 5             # HG-06
+CITAS_RESPUESTA_HUMANA_MS: 1500   # HG-02
+CITAS_CANCELACIONES: 3            # HG-03

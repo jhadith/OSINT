@@ -1,0 +1,30 @@
+{
+  "title": "CISA Catalog of Known Exploited Vulnerabilities",
+  "catalogVersion": "2026.11.27",
+  "dateReleased": "2026-11-27T00:00:00.000Z",
+  "count": 2,
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2026-111111",
+      "vendorProject": "Apache",
+      "product": "HTTP Server",
+      "vulnerabilityName": "Apache HTTP Server path traversal",
+      "dateAdded": "2026-11-24",
+      "shortDescription": "Apache HTTP Server permite traversión de rutas que permite leer archivos fuera del directorio configurado; explotación activa reportada.",
+      "requiredAction": "Apply updates",
+      "dueDate": "2026-12-15",
+      "knownRansomwareCampaignUse": "Known"
+    },
+    {
+      "cveID": "CVE-2026-222222",
+      "vendorProject": "Microsoft",
+      "product": "Windows",
+      "vulnerabilityName": "Windows Win32k elevation of privilege",
+      "dateAdded": "2026-11-26",
+      "shortDescription": "Elevación de privilegios en Win32k explotada en incidentes recientes.",
+      "requiredAction": "Apply updates",
+      "dueDate": "2026-12-17",
+      "knownRansomwareCampaignUse": "Unknown"
+    }
+  ]
+}

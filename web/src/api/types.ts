@@ -11,6 +11,8 @@ export type Permiso =
   | 'gestionar_denuncias'
   | 'verificar'
   | 'auditar'
+  | 'pedir_reglas'
+  | 'gestionar_reglas'
 
 export interface Rol {
   rol: string
@@ -125,6 +127,27 @@ export interface Tendencia {
   resumen: string
   serie: number[]
   exposicionLocal: string
+  /** Sello de procedencia: «real (KEV)» / «real (NVD)» / «simulado» (se añade solo cuando hay caché OSINT). */
+  sello?: string
+  kev?: boolean
+  exploitPublico?: boolean
+  cvss?: number | null
+}
+
+/** Metadatos OSINT que el backend adjunta a /threatpulse solo si hay lecturas reales en caché. */
+export interface OsintMeta {
+  sincronizadoEn: string
+  items: number
+  fuentes: number
+  notas: string[]
+}
+
+/** Resultado de POST /threatpulse/actualizar (sincronización manual). */
+export interface ResultadoOsint {
+  actualizadas: number
+  fallidas: number
+  totales: number
+  sincronizado_en: string
 }
 
 // ---------- operativo ----------
@@ -326,14 +349,148 @@ export interface DenunciaPublica {
 }
 
 // ---------- técnico / salud / auditoría ----------
+/** Productos descargables de la página de inteligencia: CTI existentes (S6), difusión Power BI/Maltego (S10)
+ *  e informes HTML autocontenidos (S14). */
+export type Exporte = 'stix' | 'misp' | 'sigma' | 'powerbi' | 'maltego' | 'gerencial' | 'presentacion'
 export interface Inteligencia {
   sigma: { id: string; titulo: string; nivel: string; tecnica: string; casos: string[]; yaml: string }[]
   iocs: { tipo: string; valor: string; descripcion: string; casoId: string; confianza: number }[]
   stix: string
   misp: string
 }
+export interface Verificacion {
+  entrada: string
+  tipo: 'enlace' | 'imagen'
+  veredicto: 'seguro' | 'sospechoso' | 'malicioso'
+  puntuacion: number
+  lista: string | null
+  /** Clasificación del enlace contra las listas dinámicas del SOC (5 estados; solo enlaces). */
+  clasificacion?: 'blanca' | 'negra' | 'desconocido' | 'typosquatting' | 'conflicto'
+  /** Técnicas MITRE ATT&CK que apliquen (solo enlaces). */
+  tecnicas?: { id: string; nombre: string }[]
+  /** Dominio de la lista blanca que el enlace imita (cuando hay typosquatting). */
+  referencia?: string | null
+  senales: { texto: string; tipo: 'riesgo' | 'confianza'; peso: number }[]
+  recomendacion: string
+}
+export interface EntradaBitacora {
+  id: string
+  fecha: string
+  actor: string
+  rol: string
+  accion: string
+  objetivo: string
+  detalle: string
+}
 
-/** Resultado de un job de GitHub Actions, tal como lo escribe el pipeline. */
+// ---------- listas de comparación (S15/T17b) ----------
+export type TipoLista = 'blanca' | 'negra'
+export type EstadoSolicitud = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
+/** Indicador del catálogo dinámico (SQLite del SOC), editable sin reiniciar. */
+export interface IndicadorLista {
+  id: number
+  tipo: TipoLista
+  valor: string
+  etiqueta: string
+  activo: number
+}
+/** Solicitud de inclusión/exclusión: PENDIENTE → APROBADA | RECHAZADA con motivo. */
+export interface SolicitudLista {
+  id: number
+  tipo: TipoLista
+  valor: string
+  justificacion: string
+  fuente: string
+  estado: EstadoSolicitud
+  resolucion: string
+  creado_en: string
+  resuelto_en: string | null
+  resuelto_por: string | null
+}
+
+// ---------- realimentación (S9/T18) ----------
+/** Métrica del bucle de realimentación: `valor: null` + explicación cuando no es calculable. */
+export interface Metrica {
+  formula: string
+  valor: number | null
+  explicacion: string
+  confirmadas?: number
+  descartadas?: number
+  casosConocidos?: number
+  decididos?: number
+  confirmados?: number
+}
+export interface CasoReferencia {
+  caso: string
+  titulo: string
+  estado: 'confirmada' | 'descartada' | 'pendiente'
+}
+export interface CambioUmbral {
+  archivo: string
+  clave: string
+  antes: number
+  despues: number
+  direccion: 'subir' | 'bajar'
+  fps: string[]
+}
+/** Resultado del reentrenamiento junto a la recalibración (solo cuando hubo cambio de umbrales). */
+export interface Reentrenamiento {
+  firewall?: { ventanas: number; semilla: number; modelo: string }
+  sistema_medico?: { ventanas: number; semilla: number; modelo: string }
+  notas: string[]
+}
+export interface Recalibracion {
+  fecha: string
+  actor: string
+  rol: string
+  motivo: string
+  fps: string[]
+  cambios: CambioUmbral[]
+  reentrenamiento: Reentrenamiento | null
+}
+export interface Realimentacion {
+  precision: Metrica
+  recall: Metrica
+  f1: Metrica
+  casosConocidos: CasoReferencia[]
+  analisis: string | null
+  recalibraciones: Recalibracion[]
+  historico: { firewall: number; sistema_medico: number }
+}
+export interface ResultadoRecalibrar {
+  cambios: CambioUmbral[]
+  sinUmbral: { fps: string[]; nota: string }[]
+  aplicadas: string[]
+  reentrenamiento: Reentrenamiento | null
+  nota: string
+}
+
+// ---------- OSINT y tickets de reglas ----------
+export type EstadoTicket = 'abierto' | 'en_progreso' | 'aplicado' | 'rechazado'
+export interface TicketRegla {
+  codigo: string
+  fecha: string
+  autor: string
+  tipo: 'nueva' | 'ajustar' | 'desactivar' | 'indicador'
+  tipo_texto: string
+  regla: string
+  titulo: string
+  descripcion: string
+  prioridad: 'alta' | 'media' | 'baja'
+  caso: string
+  estado: EstadoTicket
+  respuesta: string
+  atendido_por: string
+  actualizado: string
+}
+export interface ListaTickets {
+  tickets: TicketRegla[]
+  reglas: string[]
+  tipos: Record<string, string>
+  estados: Record<EstadoTicket, string>
+}
+
+// ---------- estado de CI (solo TI) ----------
 export type ResultadoCI = 'success' | 'failure' | 'cancelled' | 'skipped'
 export interface CheckCI {
   id: string
@@ -350,22 +507,4 @@ export interface EstadoCI {
   origen: string
   estado: 'correcto' | 'parcial' | 'fallido' | 'sin_datos'
   checks: CheckCI[]
-}
-export interface Verificacion {
-  entrada: string
-  tipo: 'enlace' | 'imagen'
-  veredicto: 'seguro' | 'sospechoso' | 'malicioso'
-  puntuacion: number
-  lista: string | null
-  senales: { texto: string; tipo: 'riesgo' | 'confianza'; peso: number }[]
-  recomendacion: string
-}
-export interface EntradaBitacora {
-  id: string
-  fecha: string
-  actor: string
-  rol: string
-  accion: string
-  objetivo: string
-  detalle: string
 }

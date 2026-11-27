@@ -21,9 +21,9 @@ def _enviar(texto: str) -> None:
     if not (token and chat):
         raise RuntimeError("faltan TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID")
     datos = urllib.parse.urlencode({"chat_id": chat, "text": texto}).encode("utf-8")
-    pedido = urllib.request.Request(API.format(token=token), data=datos, method="POST")  # noqa: S310 (https fijo)
+    pedido = urllib.request.Request(API.format(token=token), data=datos, method="POST")
     # URL fija con https hacia la API oficial de Telegram
-    with urllib.request.urlopen(pedido, timeout=15) as r:  # nosec B310  # noqa: S310
+    with urllib.request.urlopen(pedido, timeout=15) as r:  # nosec B310
         if not json.loads(r.read().decode("utf-8")).get("ok"):
             raise RuntimeError("Telegram rechazó el mensaje")
 

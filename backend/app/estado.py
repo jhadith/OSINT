@@ -1,11 +1,15 @@
-"""Estado de la consola en archivos JSONL de solo agregar: nunca se edita ni se borra una línea (control de repudio)."""
+"""Estado de la consola en SQLite (solo agregar): nunca se edita ni se borra una línea (control de repudio).
+
+Las firmas públicas no cambian: leer, agregar, bitacora, ultimo_por y ahora siguen igual que cuando
+los datos vivían en JSONL de estado/, así main.py no cambia. Por dentro todo va a estado/sentinel.db
+a través de app.almacen (ciclo de vida, append-only con triggers y migración idempotente).
+"""
 from __future__ import annotations
 
 import datetime as dt
-import json
 import threading
 
-from . import config
+from . import almacen, config
 
 _lock = threading.RLock()
 
@@ -14,30 +18,29 @@ def ahora() -> str:
     return dt.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
 
-def _archivo(nombre: str):
-    d = config.estado()
-    d.mkdir(parents=True, exist_ok=True)
-    return d / f"{nombre}.jsonl"
+def _ruta():
+    return config.estado() / "sentinel.db"
 
 
 def leer(nombre: str) -> list[dict]:
-    f = _archivo(nombre)
-    if not f.exists():
-        return []
-    return [json.loads(x) for x in f.read_text(encoding="utf-8").splitlines() if x.strip()]
+    with almacen.abriendo(_ruta()) as db:
+        if nombre == "bitacora":
+            return almacen.leer_bitacora(db)
+        return almacen.leer_registros(db, nombre)
 
 
 def agregar(nombre: str, registro: dict) -> dict:
-    with _lock, open(_archivo(nombre), "a", encoding="utf-8") as f:
-        f.write(json.dumps(registro, ensure_ascii=False) + "\n")
+    with _lock, almacen.abriendo(_ruta()) as db:
+        if nombre == "bitacora":
+            almacen.agregar_bitacora(db, registro)
+        else:
+            almacen.agregar_registro(db, nombre, registro)
     return registro
 
 
 def bitacora(actor: str, rol: str, accion: str, objetivo: str, detalle: str) -> dict:
-    with _lock:
-        n = len(leer("bitacora")) + 1
-        return agregar("bitacora", {"id": f"B-{n:05d}", "fecha": ahora(), "actor": actor, "rol": rol,
-                                    "accion": accion, "objetivo": objetivo, "detalle": detalle})
+    with _lock, almacen.abriendo(_ruta()) as db:
+        return almacen.registrar_evento(db, actor, rol, accion, objetivo, detalle)
 
 
 def ultimo_por(nombre: str, clave: str) -> dict[str, dict]:

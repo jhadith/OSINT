@@ -21,10 +21,10 @@ export default function Denuncias() {
   return (
     <Pagina
       titulo="Denuncias"
-      bajada="Lo que reportan afiliados y jubilados desde el portal público y el personal de salud desde «Verificar contenido». Se cruzan con las citas del chatbot."
+      bajada="Bandeja interna del SOC: aquí se gestiona lo que llega desde el canal externo de Proteger (portal público) y desde «Verificar contenido». Se cruza con las citas del chatbot; el portal es externo a esta consola."
       acciones={
         <a className="boton boton--secundario" href="/denuncia" target="_blank" rel="noreferrer">
-          Abrir el portal público <ExternalLink size={15} aria-hidden />
+          Abrir el portal Proteger (externo) <ExternalLink size={15} aria-hidden />
         </a>
       }
     >
@@ -34,7 +34,7 @@ export default function Denuncias() {
             return (
               <div className="vacio">
                 <h2>Aún no llegan denuncias</h2>
-                <p>Cuando un afiliado use el portal público, su denuncia aparecerá aquí con un código para darle seguimiento.</p>
+                <p>Cuando un afiliado use el canal externo de Proteger, su denuncia aparecerá aquí con un código para darle seguimiento.</p>
               </div>
             )
           const elegida = lista.find((d) => d.codigo === sel) ?? lista[0]
@@ -94,7 +94,7 @@ function DetalleDenuncia({ d, alGestionar }: { d: Denuncia; alGestionar: (d: Den
           <span className="mono">{d.codigo}</span> <span className={`estado-den estado-den--${d.estado}`}>{ESTADO_DENUNCIA[d.estado]}</span>
         </>
       }
-      bajada={`Recibida el ${fFechaHora(d.fecha)} desde ${d.origen === 'ciudadano' ? 'el portal público' : 'Verificar contenido'}.`}
+      bajada={`Recibida el ${fFechaHora(d.fecha)} desde ${d.origen === 'ciudadano' ? 'el portal Proteger (externo)' : 'Verificar contenido'}.`}
     >
       <h3>{d.tipo_texto}</h3>
       {d.descripcion ? <blockquote className="cita">{d.descripcion}</blockquote> : <p className="muted">Sin descripción.</p>}

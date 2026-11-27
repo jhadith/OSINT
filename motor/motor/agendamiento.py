@@ -11,6 +11,10 @@ Sigue el apartado 14 del informe:
      familia no cuentan como evidencias independientes.
   5. Priorización: anomalía, confianza y riesgo sanitario van separados. El puntaje no es probabilidad de fraude.
   6. Recomendación: mitigaciones no excluyentes. Nada se cancela ni se bloquea de forma automática.
+
+Los componentes mínimos del informe 14.4 viven en el paquete `hbvf` (catálogo JSON, validación de patrones,
+mitigaciones consultivas, métricas y persistencia SQLite); este módulo es la fachada pública que conserva la
+firma `analizar(...)` y el contrato de salida.
 """
 from __future__ import annotations
 
@@ -24,47 +28,18 @@ import pandas as pd
 from sklearn.ensemble import IsolationForest
 
 from . import config
+from .hbvf import almacen
+from .hbvf.behavior_validation import cargar_catalogo, validar
+from .hbvf.mitigation_engine import MITIGACIONES, textos_consultivos
+from .hbvf.model_evaluation import evaluar
 from .ingesta import codificacion
+
+_CATALOGO = cargar_catalogo()
+CATALOGO = _CATALOGO["patrones"]
+PESO_FAMILIA = _CATALOGO["peso_familia"]
 
 COLUMNAS = ["evento_id", "cita_id", "fecha_hora", "accion", "canal", "sesion", "paciente_ref", "contacto_ref",
             "rol_declarado", "autorizacion_ref", "ip", "ja4", "user_agent", "respuesta_ms", "especialidad", "unidad"]
-
-CATALOGO = [
-    {"id": "HG-01", "nombre": "Muchos pacientes distintos desde un mismo origen", "familia": "volumen",
-     "fuente": "Zou et al. (2026)", "contexto_legitimo": "Cuidador, familiar u operador autorizado",
-     "validacion": "Rol, canal y representación autorizada"},
-    {"id": "HG-02", "nombre": "Operaciones más rápidas que una persona", "familia": "ritmo",
-     "fuente": "Zou et al. (2026); OWASP API6:2023", "contexto_legitimo": "Operador capacitado o tecnología de asistencia",
-     "validacion": "Línea base del mismo canal; repetición y contexto"},
-    {"id": "HG-03", "nombre": "Cancelaciones recurrentes", "familia": "ciclo_de_cita",
-     "fuente": "Zou et al. (2026); Dantas et al. (2018)", "contexto_legitimo": "Cambio de horario, enfermedad, transporte",
-     "validacion": "Estado real de las citas y explicación operativa"},
-    {"id": "HG-04", "nombre": "Reservas concentradas al abrir la agenda", "familia": "momento",
-     "fuente": "OWASP API6:2023; OAT-005", "contexto_legitimo": "Demanda acumulada o campaña autorizada",
-     "validacion": "Capacidad ofertada y demanda por especialidad"},
-    {"id": "HG-05", "nombre": "Cita cancelada y reasignada enseguida a otro paciente", "familia": "ciclo_de_cita",
-     "fuente": "Hipótesis propia del equipo", "contexto_legitimo": "Reasignación normal de turnos",
-     "validacion": "Historial de la cita y corroboración independiente"},
-    {"id": "HG-06", "nombre": "Señales técnicas coincidentes (huella JA4, red, rotación de IP)", "familia": "tecnica",
-     "fuente": "FoxIO JA4+", "contexto_legitimo": "Red o dispositivo compartido",
-     "validacion": "Calidad de los vínculos; nunca atribuir solo por JA4 o IP"},
-    {"id": "HG-07", "nombre": "Oferta comercial de citas reportada por un ciudadano", "familia": "externa",
-     "fuente": "Comunicado institucional (2025); OAT-005", "contexto_legitimo": "Reporte erróneo o manipulado",
-     "validacion": "Autenticidad del reporte y relación con el caso"},
-]
-PESO_FAMILIA = {"volumen": 1.0, "momento": 1.0, "ritmo": 1.0, "ciclo_de_cita": 1.0, "tecnica": 0.5, "externa": 1.0}
-
-MITIGACIONES = {
-    "confirmacion": "Confirmar la reserva con el afiliado por su contacto ya verificado (no el que se dejó en el chat). "
-                    "Puede confirmar, desconocer o pedir ayuda; no responder no le quita la cita.",
-    "representacion": "Verificar si existe una representación autorizada (cuidador u operador) antes de actuar.",
-    "educacion": "Informar a los pacientes de este punto sobre los canales oficiales y que las citas son gratuitas, "
-                 "sin acusar a nadie.",
-    "revision": "Revisión conjunta del SOC y el área de agendamiento; las reservas se preservan mientras se investiga.",
-    "desafio": "Pedir una verificación adicional (por ejemplo, un CAPTCHA accesible) a las sesiones de este origen.",
-    "lista_espera": "Si un paciente desconoce su cita, ofrecerla por la lista de espera según el procedimiento.",
-    "seguimiento": "Medir reincidencia corroborada y posibles perjuicios a pacientes legítimos.",
-}
 
 
 def referencia_contacto(texto: str) -> str:
@@ -235,74 +210,6 @@ def medir(df: pd.DataFrame) -> pd.DataFrame:
     return m
 
 
-# ---------- validación HBVF ----------
-def _estado_patron(presente: bool | None, explicado: bool = False) -> str:
-    if presente is None:
-        return "desconocido"
-    if presente and explicado:
-        return "explicado"
-    return "presente" if presente else "ausente"
-
-
-def validar(r: pd.Series, reportados: set) -> dict:
-    c = config
-    autorizado = bool(r["autorizado"]) and r["rol"] in ("cuidador", "operador_autorizado")
-    tecnica = None if not r["con_datos_tecnicos"] else bool(
-        r["no_navegador"] or r["pct_red_oculta"] >= 0.5 or r["ips"] >= c.CITAS_IPS_ROTACION)
-    patrones = {
-        "HG-01": _estado_patron(r["pacientes_por_semana"] > c.CITAS_PACIENTES_SEMANA
-                                or r["pacientes"] > c.CITAS_LIMITE_30_DIAS, explicado=autorizado),
-        "HG-02": _estado_patron(None if not r["con_tiempos"] else
-                                bool(r["respuesta_mediana_ms"] < c.CITAS_RESPUESTA_HUMANA_MS), explicado=autorizado),
-        "HG-03": _estado_patron(r["cancelaciones"] >= c.CITAS_CANCELACIONES
-                                and r["cancelaciones"] >= 0.3 * max(1, r["reservas"])),
-        "HG-04": _estado_patron(r["reservas_al_abrir"] >= c.CITAS_AL_ABRIR),
-        "HG-05": _estado_patron(r["reasignaciones"] >= 1),
-        "HG-06": _estado_patron(tecnica, explicado=autorizado),
-        "HG-07": "presente" if r.name in reportados else "ausente",
-    }
-    fam = {p["id"]: p["familia"] for p in CATALOGO}
-    familias = {fam[k] for k, v in patrones.items() if v == "presente"}
-    independientes = sum(PESO_FAMILIA[f] for f in familias)
-    desconocidos = [k for k, v in patrones.items() if v == "desconocido"]
-    explicados = [k for k, v in patrones.items() if v == "explicado"]
-    presentes = [k for k, v in patrones.items() if v == "presente"]
-
-    if not presentes and explicados:
-        estado = "Explicado por contexto legítimo"
-    elif independientes >= 3 or (independientes >= 2 and ("HG-05" in presentes or "HG-07" in presentes)):
-        estado = "Revisión prioritaria"
-    elif independientes >= 2:
-        estado = "Requiere revisión"
-    elif independientes >= 1 and len(desconocidos) >= 2:
-        estado = "Indeterminado: falta información"
-    elif independientes >= 1:
-        estado = "Observación"
-    else:
-        estado = "Sin hallazgo"
-    confianza = round(min(1.0, 0.22 * independientes + (0.12 if "HG-07" in presentes else 0)
-                          - 0.05 * len(desconocidos)), 2)
-    confianza = max(0.0, confianza)
-    prob = 1 + min(4, int(round(independientes)))          # 1..5
-    impacto = 5 if "HG-05" in presentes else 4             # disponibilidad y equidad del acceso a la salud
-    legitimas = [p["contexto_legitimo"] for p in CATALOGO if patrones[p["id"]] in ("presente", "explicado")]
-    recomendaciones = []
-    if estado in ("Revisión prioritaria", "Requiere revisión"):
-        recomendaciones = ["confirmacion", "representacion", "revision", "educacion"]
-        if patrones["HG-06"] == "presente" or patrones["HG-02"] == "presente":
-            recomendaciones.append("desafio")
-        if "HG-05" in presentes:
-            recomendaciones.append("lista_espera")
-        recomendaciones.append("seguimiento")
-    elif estado.startswith("Indeterminado") or estado == "Observación":
-        recomendaciones = ["representacion", "seguimiento"]
-    return {"patrones": patrones, "estado": estado, "confianza": confianza, "evidencia_independiente": independientes,
-            "riesgo": prob * impacto, "probabilidad": prob, "impacto": impacto,
-            "explicaciones_legitimas": legitimas, "recomendaciones": recomendaciones,
-            "revision_requerida": estado in ("Revisión prioritaria", "Requiere revisión")
-            or estado.startswith("Indeterminado")}
-
-
 def anomalia(m: pd.DataFrame) -> pd.Series:
     cols = ["sesiones", "ips", "reservas", "pacientes", "cancelaciones", "reservas_al_abrir", "reasignaciones",
             "pct_red_oculta"]
@@ -316,35 +223,27 @@ def anomalia(m: pd.DataFrame) -> pd.Series:
     return pd.Series(np.round((b - b.min()) / ((b.max() - b.min()) or 1), 2), index=m.index)
 
 
-def evaluar(df: pd.DataFrame, m: pd.DataFrame, resultados: dict) -> dict | None:
-    """Solo si el dataset trae la columna `escenario` (datos sintéticos con escenarios conocidos). El detector no la usa."""
-    if "escenario" not in df.columns or not (df["escenario"] != "").any():
-        return None
-    real = df.groupby("punto")["escenario"].agg(lambda s: s.value_counts().index[0])
-    positivo = real.str.startswith("tramitador")
-    pred = pd.Series({p: resultados[p]["revision_requerida"] and not resultados[p]["estado"].startswith("Indeterminado")
-                      for p in m.index})
-    vp = int((positivo & pred).sum())
-    fp = int((~positivo & pred).sum())
-    fn = int((positivo & ~pred).sum())
-    vn = int((~positivo & ~pred).sum())
-    prec = vp / (vp + fp) if vp + fp else 0.0
-    sens = vp / (vp + fn) if vp + fn else 0.0
-    por_escenario = {}
-    for esc, grupo in real.groupby(real):
-        por_escenario[esc] = {"puntos": int(len(grupo)),
-                              "marcados_para_revision": int(pred.reindex(grupo.index).sum()),
-                              "estados": pd.Series([resultados[p]["estado"] for p in grupo.index]).value_counts()
-                              .to_dict()}
-    return {"nota": "Prueba preliminar con datos sintéticos y escenarios conocidos; no demuestra eficacia real.",
-            "matriz": {"vp": vp, "fp": fp, "fn": fn, "vn": vn}, "precision": round(prec, 3),
-            "sensibilidad": round(sens, 3), "tasa_falsos_positivos": round(fp / (fp + vn), 4) if fp + vn else 0.0,
-            "f1": round(2 * prec * sens / (prec + sens), 3) if prec + sens else 0.0, "por_escenario": por_escenario}
+def _persistir(ruta_db: Path, ruta: Path, filas: int, casos: list[dict]) -> None:
+    """Registra fuente, catálogo y decisiones en SQLite (informe 14.4). Solo agrega bitácora: no modifica citas."""
+    conn = almacen.abrir(ruta_db)
+    try:
+        almacen.crear_esquema(conn)
+        almacen.guardar_fuente(conn, ruta=ruta, tipo="csv_citas_chatbot", filas=filas,
+                               sha256=almacen.hash_archivo(ruta))
+        almacen.guardar_patrones(conn, _CATALOGO)
+        almacen.guardar_decisiones(conn, casos)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def analizar(ruta: Path, ruta_redes: Path | None = None, reportados_contacto: set | None = None,
-             origen: str = "") -> dict:
-    """Devuelve el contrato de salida del módulo (informe, 14.4)."""
+             origen: str = "", ruta_db: Path | None = None) -> dict:
+    """Devuelve el contrato de salida del módulo (informe, 14.4).
+
+    Con ``ruta_db`` además persiste fuentes, patrones y decisiones en SQLite; nunca
+    cancela ni bloquea nada (S10).
+    """
     redes = TablaRedes.desde_csv(ruta_redes) if ruta_redes and Path(ruta_redes).exists() else None
     df = enriquecer(leer(ruta), redes)
     df["punto"], vinculos = agrupar(df)
@@ -368,7 +267,7 @@ def analizar(ruta: Path, ruta_redes: Path | None = None, reportados_contacto: se
             "status": v["estado"], "review_required": v["revision_requerida"],
             "evidence_refs": x["evento_id"].head(15).tolist(),
             "legitimate_explanations": v["explicaciones_legitimas"],
-            "recommendations": [{"id": k, "texto": MITIGACIONES[k]} for k in v["recomendaciones"]],
+            "recommendations": textos_consultivos(v["recomendaciones"]),
             "dataset_origin": origen or Path(ruta).name,
             "resumen": {"sesiones": int(r["sesiones"]), "canales": r["canales"], "ips": int(r["ips"]),
                         "contactos": int(r["contactos"]), "reservas": int(r["reservas"]),
@@ -384,7 +283,7 @@ def analizar(ruta: Path, ruta_redes: Path | None = None, reportados_contacto: se
             "contactos_ref": sorted(set(x.loc[x["contacto_ref"] != "", "contacto_ref"])),
         })
     estados = pd.Series([v["estado"] for v in res.values()]).value_counts().to_dict()
-    return {
+    salida = {
         "dataset_origin": origen or Path(ruta).name, "catalogo": CATALOGO, "mitigaciones": MITIGACIONES,
         "vinculos_de_agrupacion": vinculos,
         "resumen": {"eventos": int(len(df)), "sesiones": int(df["sesion"].nunique()), "puntos": int(len(m)),
@@ -400,3 +299,6 @@ def analizar(ruta: Path, ruta_redes: Path | None = None, reportados_contacto: se
                        "Indicadores de la misma familia no cuentan como evidencias independientes.",
                        "Ninguna cita se cancela ni se bloquea de forma automática."],
     }
+    if ruta_db is not None:
+        _persistir(ruta_db, ruta, len(df), casos)
+    return salida

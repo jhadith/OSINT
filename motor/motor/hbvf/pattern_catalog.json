@@ -1,0 +1,71 @@
+{
+  "version": "1.0.0",
+  "fuente": "Informe F-11 Sentinel Salud (HBVF-FF), apartado 14.4",
+  "estados": ["ausente", "presente", "desconocido", "explicado"],
+  "peso_familia": {
+    "volumen": 1.0,
+    "momento": 1.0,
+    "ritmo": 1.0,
+    "ciclo_de_cita": 1.0,
+    "tecnica": 0.5,
+    "externa": 1.0
+  },
+  "patrones": [
+    {
+      "id": "HG-01",
+      "nombre": "Muchos pacientes distintos desde un mismo origen",
+      "familia": "volumen",
+      "fuente": "Zou et al. (2026)",
+      "contexto_legitimo": "Cuidador, familiar u operador autorizado",
+      "validacion": "Rol, canal y representación autorizada"
+    },
+    {
+      "id": "HG-02",
+      "nombre": "Operaciones más rápidas que una persona",
+      "familia": "ritmo",
+      "fuente": "Zou et al. (2026); OWASP API6:2023",
+      "contexto_legitimo": "Operador capacitado o tecnología de asistencia",
+      "validacion": "Línea base del mismo canal; repetición y contexto"
+    },
+    {
+      "id": "HG-03",
+      "nombre": "Cancelaciones recurrentes",
+      "familia": "ciclo_de_cita",
+      "fuente": "Zou et al. (2026); Dantas et al. (2018)",
+      "contexto_legitimo": "Cambio de horario, enfermedad, transporte",
+      "validacion": "Estado real de las citas y explicación operativa"
+    },
+    {
+      "id": "HG-04",
+      "nombre": "Reservas concentradas al abrir la agenda",
+      "familia": "momento",
+      "fuente": "OWASP API6:2023; OAT-005",
+      "contexto_legitimo": "Demanda acumulada o campaña autorizada",
+      "validacion": "Capacidad ofertada y demanda por especialidad"
+    },
+    {
+      "id": "HG-05",
+      "nombre": "Cita cancelada y reasignada enseguida a otro paciente",
+      "familia": "ciclo_de_cita",
+      "fuente": "Hipótesis propia del equipo",
+      "contexto_legitimo": "Reasignación normal de turnos",
+      "validacion": "Historial de la cita y corroboración independiente"
+    },
+    {
+      "id": "HG-06",
+      "nombre": "Señales técnicas coincidentes (huella JA4, red, rotación de IP)",
+      "familia": "tecnica",
+      "fuente": "FoxIO JA4+",
+      "contexto_legitimo": "Red o dispositivo compartido",
+      "validacion": "Calidad de los vínculos; nunca atribuir solo por JA4 o IP"
+    },
+    {
+      "id": "HG-07",
+      "nombre": "Oferta comercial de citas reportada por un ciudadano",
+      "familia": "externa",
+      "fuente": "Comunicado institucional (2025); OAT-005",
+      "contexto_legitimo": "Reporte erróneo o manipulado",
+      "validacion": "Autenticidad del reporte y relación con el caso"
+    }
+  ]
+}

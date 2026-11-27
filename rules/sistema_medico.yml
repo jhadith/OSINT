@@ -1,0 +1,14 @@
+# Umbrales de las reglas del sistema médico (S3/S12).
+# Calibrados con octubre de 2026: cada cuenta tiene ~500 eventos al mes repartidos al azar
+# entre 9 acciones (máximo 83 accesos fallidos en el mes).
+
+FALLIDOS_SEG: 86400              # ventana de accesos fallidos (segundos = 24 h)
+FALLIDOS_MIN: 100                # >= 100 accesos fallidos de una cuenta en 24 h
+MASIVO_SEG: 60                   # ventana de extracción (segundos)
+MASIVO_MIN: 20                   # >= 20 transferencias o descargas de una cuenta en 1 min
+CUENTA_RARA_MAX: 5               # cuenta con <= 5 eventos en el mes (cuenta fantasma)...
+PATRON_SENSIBLE: "DESCARGA|TRANSFER|TRANFER|EXPORT"   # ...y alguna acción que saca datos
+PATRON_FALLIDO: "FALLID"
+PATRON_ADMIN: "nivel|activ|inactiv|reactiv|permiso|rol"
+NOMBRES_CUENTA_COMPARTIDA: 50    # cuenta usada con >= 50 nombres distintos → compartida
+ADMIN_VECES_MEDIANA: 5           # acción administrativa >= 5 veces la mediana por cuenta

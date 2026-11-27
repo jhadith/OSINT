@@ -160,6 +160,30 @@ describe('rutas de la API', () => {
     }
   })
 
+  it('cubre las rutas avanzadas incorporadas en V5', async () => {
+    const { api } = await cliente()
+    const casos: [() => Promise<unknown>, string][] = [
+      [() => api.actualizarTendencias(), '/api/threatpulse/actualizar'],
+      [() => api.tablero(), '/api/tablero'],
+      [() => api.tickets(), '/api/tickets'],
+      [() => api.crearTicket({ tipo: 'nueva', regla: 'X' }), '/api/tickets'],
+      [() => api.gestionarTicket('TK-1', 'aplicado', 'listo'), '/api/tickets/TK-1/gestion'],
+      [() => api.listasIndicadores(), '/api/listas/indicadores'],
+      [() => api.listasAlta('blanca', 'ejemplo.com', 'prueba'), '/api/listas/indicadores'],
+      [() => api.listasBaja(7), '/api/listas/indicadores/7'],
+      [() => api.listasSolicitudes(), '/api/listas/solicitudes'],
+      [() => api.listasSolicitudes('pendiente'), '/api/listas/solicitudes?estado=pendiente'],
+      [() => api.listasSolicitar('negra', 'mal.com', 'motivo de prueba', 'fuente'), '/api/listas/solicitudes'],
+      [() => api.listasResolver(3, true, 'aceptada'), '/api/listas/solicitudes/3/resolver'],
+      [() => api.realimentacion(), '/api/realimentacion'],
+      [() => api.recalibrar('ajuste de umbral'), '/api/realimentacion/recalibrar'],
+    ]
+    for (const [llamar, ruta] of casos) {
+      await llamar()
+      expect(ultimaLlamada()[0]).toBe(ruta)
+    }
+  })
+
   it('descarga los exportes como archivo', async () => {
     vi.useFakeTimers()
     const crear = vi.fn(() => 'blob:prueba')
@@ -169,10 +193,13 @@ describe('rutas de la API', () => {
     URL.revokeObjectURL = revocar
     const clic = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
     const { api } = await cliente()
-    await api.exportar('sigma')
-    await api.exportar('stix')
-    expect(ultimaLlamada()[0]).toBe('/api/exportes/stix')
-    expect(clic).toHaveBeenCalledTimes(2)
+    await api.informePdf()
+    expect(ultimaLlamada()[0]).toBe('/api/exportes/informe-pdf')
+    for (const tipo of ['sigma', 'stix', 'misp', 'powerbi', 'maltego', 'gerencial', 'presentacion'] as const) {
+      await api.exportar(tipo)
+      expect(ultimaLlamada()[0]).toBe(`/api/exportes/${tipo}`)
+    }
+    expect(clic).toHaveBeenCalledTimes(8)
     vi.runAllTimers()
     expect(revocar).toHaveBeenCalledWith('blob:prueba')
     URL.createObjectURL = originales.crear

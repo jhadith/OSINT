@@ -4,7 +4,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { ListaAnalisis } from '../api/types'
 import { fMes } from '../lib/format'
-import { AREAS, NAV } from '../lib/nav'
+import { accede, AREAS, NAV } from '../lib/nav'
 import { useSesion } from '../lib/sesion'
 import { Marca } from './Marca'
 
@@ -13,6 +13,7 @@ export function Shell() {
   const [abierto, setAbierto] = useState(false)
   const [acceso, setAcceso] = useState(false)
   const [lista, setLista] = useState<ListaAnalisis | null>(null)
+  const [pendientes, setPendientes] = useState(0)
   const loc = useLocation()
   const ir = useNavigate()
 
@@ -20,6 +21,11 @@ export function Shell() {
     setAbierto(false)
     setAcceso(false)
     if (puede('estrategico')) api.analisis().then(setLista).catch(() => setLista(null))
+    if (puede('gestionar_reglas'))
+      api
+        .tickets()
+        .then((t) => setPendientes(t.tickets.filter((x) => x.estado === 'abierto' || x.estado === 'en_progreso').length))
+        .catch(() => setPendientes(0))
   }, [loc.pathname, puede])
 
   if (!sesion) return null
@@ -36,9 +42,9 @@ export function Shell() {
         </div>
         <nav>
           {NAV.map((g) => {
-            const visibles = g.items.filter((i) => puede(i.permiso))
-            const bloqueados = g.items.filter((i) => !puede(i.permiso))
-            if (!visibles.length && !bloqueados.length) return null
+            const visibles = g.items.filter((i) => accede(i, sesion.permisos))
+            // Las secciones a las que el rol no tiene acceso no se muestran; un grupo sin secciones desaparece.
+            if (!visibles.length) return null
             return (
               <div key={g.nivel} className="lateral__grupo">
                 <div className="lateral__nivel">
@@ -48,21 +54,19 @@ export function Shell() {
                   <NavLink key={i.ruta} to={i.ruta} className="lateral__item">
                     <i.icono size={18} aria-hidden />
                     <span>{i.nombre}</span>
+                    {i.ruta === '/tickets' && pendientes > 0 && (
+                      <span className="lateral__aviso" title="Tickets abiertos para TI">
+                        {pendientes}
+                      </span>
+                    )}
                   </NavLink>
-                ))}
-                {bloqueados.map((i) => (
-                  <span key={i.ruta} className="lateral__item lateral__item--bloqueado" title={`Tu rol no tiene acceso a ${i.nombre}`}>
-                    <Lock size={16} aria-hidden />
-                    <span>{i.nombre}</span>
-                    <span className="sr">(sin acceso para tu rol)</span>
-                  </span>
                 ))}
               </div>
             )
           })}
         </nav>
         <a className="lateral__publico" href="/denuncia" target="_blank" rel="noreferrer">
-          Portal de denuncias para afiliados
+          Portal de denuncias
         </a>
       </aside>
 

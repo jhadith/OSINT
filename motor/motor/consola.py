@@ -6,6 +6,8 @@ como los valores de referencia de un examen de laboratorio.
 """
 from __future__ import annotations
 
+import csv
+import io
 import json
 import uuid
 from pathlib import Path
@@ -247,7 +249,7 @@ def anomalias(r, col: str, stats: pd.DataFrame, fuente: str, casos_por: dict, se
     t = t.assign(ent=t[col].astype(str))
     top = pd.concat([t.head(100), t[t["ent"].isin(casos_por) & ~t.index.isin(t.head(100).index)]])
     filas = []
-    for _k, x in enumerate(top.itertuples(), 1):
+    for _, x in enumerate(top.itertuples(), 1):
         ent = x.ent
         st = stats.loc[ent] if ent in stats.index else None
         motivo = (x.por_que.split(" | ")[0] if x.por_que else "Sin rasgo destacado en su peor ventana")
@@ -303,7 +305,7 @@ def grafo(casos: list[dict], generales: list, personas) -> dict:
 def _sigma(id_, titulo, nivel, tecnica, casos, logsource, deteccion, desc) -> dict:
     return {"id": id_, "titulo": titulo, "nivel": nivel, "tecnica": tecnica, "casos": casos, "yaml":
             f"title: {titulo}\nid: {uuid.uuid5(NS, 'sigma' + id_)}\nstatus: experimental\ndescription: {desc}\n"
-            f"author: ESPEThreat\ndate: 2026-11-26\ntags:\n  - attack.{tecnica.lower()}\nlogsource:\n{logsource}\n"
+            f"author: ESPEThreat\ndate: {config.SIGMA_FECHA}\ntags:\n  - attack.{tecnica.lower()}\nlogsource:\n{logsource}\n"
             f"detection:\n{deteccion}\nfalsepositives:\n  - Tareas de administración autorizadas\nlevel: {nivel}"}
 
 
@@ -434,6 +436,84 @@ def resumen(rm_motor: dict, fw, med, casos, serie_h, base, personas, generales, 
     }
 
 
+# ---------- tablas para Power BI y grafo para Maltego CE (S10/T12) ----------
+TABLAS_POWERBI = {
+    "alertas.csv": ["id", "caso", "regla", "titulo", "gravedad", "puntaje", "probabilidad", "impacto", "fuente",
+                    "inicio", "fin", "ip_origen", "cuenta", "usuario_firewall", "persona",
+                    "eventos_firewall", "eventos_sistema_medico", "riesgo", "desfase_reloj_h"],
+    "casos.csv": ["id", "titulo", "tipo", "gravedad", "inicio", "duracion", "ipOrigen", "cuenta", "seudonimo",
+                  "protocolo", "tecnicas", "riesgos", "detectadoPor", "estado"],
+    "tendencias.csv": ["ts", "puntuacion", "fallidos", "ssh", "transferencias"],
+    "indicadores.csv": ["nombre", "valor", "refMin", "refMax", "unidad", "nota"],
+    "pilares.csv": ["pilar", "riesgo", "evidencia", "casos"],
+    "resumen.csv": ["periodo", "registrosAnalizados", "registrosFirewall", "registrosSistemaMedico",
+                    "minutosProcesamiento", "usuariosFirewall", "cuentasSistemaMedico",
+                    "cuentasSospechosas", "controlesConBrecha"],
+}
+
+
+def _csv(columnas: list[str], filas: list[dict]) -> str:
+    b = io.StringIO()
+    w = csv.DictWriter(b, fieldnames=columnas, extrasaction="ignore", lineterminator="\n")
+    w.writeheader()
+    for f in filas:
+        w.writerow({c: "" if f.get(c) is None else f.get(c, "") for c in columnas})
+    return b.getvalue()
+
+
+def tablas_powerbi(resumen: dict, casos: list[dict], serie_h: list[dict], alertas: list[dict]) -> dict[str, str]:
+    """Tablas planas con encabezados estables para el tablero de Power BI (T10). Van con los mismos datos que
+    salidas/consola/*.json: los nombres de personas ya son seudónimos, ningún valor de la tabla de reidentificación
+    cruza aquí."""
+    filas = {
+        "alertas.csv": alertas,
+        "casos.csv": [{**{k: c.get(k) for k in ("id", "titulo", "tipo", "gravedad", "inicio", "duracion",
+                                                "ipOrigen", "cuenta", "seudonimo", "protocolo", "estado")},
+                       "tecnicas": "; ".join(t["id"] for t in c.get("tecnicas", [])),
+                       "riesgos": "; ".join(c.get("riesgos", [])),
+                       "detectadoPor": "; ".join(c.get("detectadoPor", []))} for c in casos],
+        "tendencias.csv": serie_h,
+        "indicadores.csv": resumen.get("indicadores", []),
+        "pilares.csv": [{**p, "casos": "; ".join(p.get("casos", []))} for p in resumen.get("pilares", [])],
+        "resumen.csv": [{k: resumen.get(k) for k in TABLAS_POWERBI["resumen.csv"]}],
+    }
+    return {n: limpiar(_csv(TABLAS_POWERBI[n], filas[n])) for n in TABLAS_POWERBI}
+
+
+def escribir_powerbi(carpeta: Path, tablas: dict[str, str]) -> None:
+    d = carpeta / "powerbi"
+    d.mkdir(parents=True, exist_ok=True)
+    for nombre, texto in tablas.items():
+        (d / nombre).write_text(texto, encoding="utf-8")
+
+
+TIPOS_MALTEGO = {"servidor": ("maltego.IPv4Address", "ipaddress"), "ip": ("maltego.IPv4Address", "ipaddress"),
+                 "cuenta": ("maltego.Alias", "alias")}
+
+
+def maltego(g: dict) -> str:
+    """CSV en el formato de transform de Maltego CE (EntityType,Property Name,Value): primero las entidades del grafo
+    y después las relaciones como maltego.Link. Las etiquetas son las mismas de salidas/consola/grafo.json."""
+    filas, valor_de = [], {}
+    for n in g.get("nodos", []):
+        tipo, prop = TIPOS_MALTEGO.get(n["tipo"], ("maltego.Phrase", "phrase"))
+        valor_de[n["id"]] = n["etiqueta"]
+        filas.append([tipo, prop, n["etiqueta"]])
+        if n.get("casoId"):
+            filas.append([tipo, "caseId", n["casoId"]])
+        if n.get("gravedad"):
+            filas.append([tipo, "gravedad", n["gravedad"]])
+    for a in g.get("aristas", []):
+        filas.append(["maltego.Link", "link.from", valor_de.get(a["origen"], a["origen"])])
+        filas.append(["maltego.Link", "link.to", valor_de.get(a["destino"], a["destino"])])
+        filas.append(["maltego.Link", "link.label", f"{a['etiqueta']} ({a['eventos']} eventos)"])
+    b = io.StringIO()
+    w = csv.writer(b, lineterminator="\n")
+    w.writerow(["EntityType", "Property Name", "Value"])
+    w.writerows(filas)
+    return b.getvalue()
+
+
 # ---------- todo ----------
 def generar(carpeta: Path, pares: list, fw: pd.DataFrame, med: pd.DataFrame, rf, rm, seud, filas_fw: pd.DataFrame,
             generales: list, rm_motor: dict) -> None:
@@ -459,6 +539,7 @@ def generar(carpeta: Path, pares: list, fw: pd.DataFrame, med: pd.DataFrame, rf,
     por_usuario = {c["_usuario_fw"]: c["id"] for c, _ in casos if c["_usuario_fw"]}
     ip_usuario = {c["_usuario_fw"]: c["ipOrigen"] for c, _ in casos if c["_usuario_fw"]}
     por_cuenta = {c["cuenta"]: c["id"] for c, _ in casos if c["cuenta"]}
+    grafo_d = grafo([c for c, _ in casos], [g for g in generales if g.evidencia.get("detalle")], personas)
     an_fw = anomalias(rf, "u", st_fw, "firewall", por_usuario, seud, ip_usuario)
     # persona más frecuente de cada cuenta listada, para mostrar su seudónimo
     listadas = set(rm.tabla.sort_values("puntaje", ascending=False).drop_duplicates("cuenta").head(100)["cuenta"]
@@ -473,7 +554,7 @@ def generar(carpeta: Path, pares: list, fw: pd.DataFrame, med: pd.DataFrame, rf,
         "resumen.json": resumen(rm_motor, fw, med, casos, serie_h, base, personas, generales, an_med, alertas),
         "casos.json": [{k: v for k, v in c.items() if not k.startswith("_")} for c, _ in casos],
         "serie.json": serie_h, "anomalias_firewall.json": an_fw, "anomalias_sistema_medico.json": an_med,
-        "grafo.json": grafo([c for c, _ in casos], [g for g in generales if g.evidencia.get("detalle")], personas),
+        "grafo.json": grafo_d,
         "inteligencia.json": inteligencia([c for c, _ in casos], rm_motor["generado"]),
         "lineas_base.json": base,
     }
@@ -486,3 +567,7 @@ def generar(carpeta: Path, pares: list, fw: pd.DataFrame, med: pd.DataFrame, rf,
     for nombre, obj in datos.items():
         (salida / nombre).write_text(limpiar(json.dumps(obj, ensure_ascii=False, indent=2, default=conv)),
                                      encoding="utf-8")
+    # Difusión (S10/T12): tablas planas para Power BI y el grafo en CSV de Maltego CE, con los mismos datos
+    # seudonimizados que salidas/consola/*.json.
+    escribir_powerbi(carpeta, tablas_powerbi(datos["resumen.json"], [c for c, _ in casos], serie_h, alertas))
+    (salida / "grafo_maltego.csv").write_text(limpiar(maltego(grafo_d)), encoding="utf-8")

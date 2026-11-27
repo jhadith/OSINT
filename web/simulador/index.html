@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de citas — SIMULACIÓN local</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 42rem; color: #1c2733; }
+  .aviso { background: #fff3cd; border: 1px solid #ffe08a; padding: .75rem 1rem; border-radius: 6px; }
+  code, pre { background: #f2f5f8; padding: .2rem .4rem; border-radius: 4px; display: block; white-space: pre-wrap; }
+  button { background: #14549c; color: #fff; border: 0; border-radius: 6px; padding: .55rem 1rem; cursor: pointer; }
+  fieldset { border: 1px solid #d7dee6; border-radius: 6px; margin-top: 1.5rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Simulador de citas</h1>
+  <p class="aviso"><strong>SIMULACIÓN local</strong>: no es el chatbot real del IESS
+  (IzyBot) y no se envía nada a ninguna parte. Cada petición lleva un
+  <code>device_id</code> calculado en este navegador con fingerprint propio
+  (sin librerías externas); el servidor solo registra telemetría de prueba y
+  aplica sus propias sanciones de dispositivo.</p>
+
+  <fieldset>
+    <legend>Fingerprint de dispositivo</legend>
+    <p>Identificador calculado en local (hash de señales del equipo):</p>
+    <code id="device_id">calculando…</code>
+    <pre id="senales"></pre>
+  </fieldset>
+
+  <fieldset>
+    <legend>Prueba de reserva</legend>
+    <form id="formulario">
+      <label>Acción:
+        <select id="accion">
+          <option value="reservar">reservar</option>
+          <option value="confirmar">confirmar</option>
+          <option value="modificar">modificar</option>
+          <option value="cancelar">cancelar</option>
+          <option value="no_show">no_show</option>
+        </select>
+      </label>
+      <input type="hidden" id="campo_device" name="device_id" value="">
+      <button type="submit">Enviar petición de prueba</button>
+    </form>
+    <pre id="resultado"></pre>
+  </fieldset>
+
+  <script src="fingerprint.js"></script>
+</main>
+</body>
+</html>

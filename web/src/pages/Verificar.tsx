@@ -1,5 +1,5 @@
 import { CircleCheck, ImageUp, Link2, OctagonAlert, Send, TriangleAlert } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { api } from '../api/client'
 import type { Verificacion } from '../api/types'
 import { Pagina } from '../components/ui'
@@ -9,6 +9,22 @@ const VEREDICTO = {
   sospechoso: { titulo: 'Tiene señales sospechosas', icono: TriangleAlert },
   malicioso: { titulo: 'Es peligroso: no lo abras', icono: OctagonAlert },
 } as const
+
+/** Clasificación contra las listas dinámicas del SOC: 5 estados con color (verde, rojo, gris, naranja, ámbar). */
+const CLASIFICACION: Record<
+  NonNullable<Verificacion['clasificacion']>,
+  { texto: string; clase: string; estilo?: CSSProperties }
+> = {
+  blanca: { texto: 'En la lista blanca', clase: 'etiqueta etiqueta--verde' },
+  negra: { texto: 'En la lista negra', clase: 'estado estado--confirmado' },
+  desconocido: { texto: 'Desconocido para el SOC', clase: 'estado' },
+  typosquatting: { texto: 'Typosquatting', clase: 'estado-den estado-den--recibida' },
+  conflicto: {
+    texto: 'Conflicto: está en la blanca y en la negra',
+    clase: 'estado',
+    estilo: { background: 'var(--media-fondo)', color: 'var(--media-tinta)' },
+  },
+}
 
 export default function Verificar() {
   const [url, setUrl] = useState('')
@@ -80,6 +96,22 @@ function Resultado({ r }: { r: Verificacion }) {
         <h2>{v.titulo}</h2>
         <p className="veredicto__recomendacion">{r.recomendacion}</p>
         <p className="mono quiebre muted">{r.entrada}</p>
+        {r.clasificacion && (
+          <p>
+            <span className={CLASIFICACION[r.clasificacion].clase} style={CLASIFICACION[r.clasificacion].estilo}>
+              {CLASIFICACION[r.clasificacion].texto}
+            </span>
+            {r.referencia && (
+              <span className="muted">
+                {' '}
+                · se parece a <span className="mono">{r.referencia}</span>
+              </span>
+            )}
+          </p>
+        )}
+        {r.tecnicas && r.tecnicas.length > 0 && (
+          <p className="nota">Técnicas MITRE: {r.tecnicas.map((t) => `${t.id} ${t.nombre}`).join(' · ')}</p>
+        )}
         <ul className="senales">
           {r.senales.map((s) => (
             <li key={s.texto} className={`senal senal--${s.tipo}`}>

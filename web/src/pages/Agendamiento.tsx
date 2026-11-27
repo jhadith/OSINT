@@ -30,8 +30,8 @@ export default function Agendamiento() {
   const { st, reintentar, actualizar } = useApi(api.agenda)
   return (
     <Pagina
-      titulo="Citas del chatbot"
-      bajada="Buscamos orígenes que reservan citas para muchos pacientes, como lo haría un tramitador. Nada se cancela ni se bloquea solo: cada caso pasa por una persona."
+      titulo="Citas del chatbot — módulo HBVF (externo al SOC)"
+      bajada="Módulo complementario fuera del SOC: solo alimenta hipótesis para que una persona revise; nada actúa sobre personas o citas por sí solo. Buscamos orígenes que reservan citas para muchos pacientes, como lo haría un tramitador. Nada se cancela ni se bloquea solo: cada caso pasa por una persona."
     >
       <Carga st={st} reintentar={reintentar} filas={8}>
         {(a) => (

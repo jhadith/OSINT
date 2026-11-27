@@ -1,0 +1,102 @@
+{
+  "resultsPerPage": 3,
+  "startIndex": 0,
+  "totalResults": 3,
+  "format": "NVD_CVE",
+  "version": "2.0",
+  "timestamp": "2026-11-27T00:00:00.000",
+  "vulnerabilities": [
+    {
+      "cve": {
+        "id": "CVE-2026-111111",
+        "sourceIdentifier": "cna@apache.org",
+        "published": "2026-11-20T01:00:00.000",
+        "lastModified": "2026-11-25T10:00:00.000",
+        "vulnStatus": "Analyzed",
+        "cveTags": [],
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "Apache HTTP Server path traversal allows an unauthenticated attacker to read files outside the configured document root."
+          }
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "3.1",
+                "baseScore": 9.8,
+                "baseSeverity": "CRITICAL"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "cve": {
+        "id": "CVE-2026-333333",
+        "sourceIdentifier": "cve@mitre.org",
+        "published": "2026-11-25T15:30:00.000",
+        "lastModified": "2026-11-26T09:00:00.000",
+        "vulnStatus": "Awaiting Analysis",
+        "cveTags": [],
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "Unauthenticated information disclosure in a widely used web framework exposes session metadata."
+          }
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "3.1",
+                "baseScore": 5.3,
+                "baseSeverity": "MEDIUM"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "cve": {
+        "id": "CVE-2026-444444",
+        "sourceIdentifier": "cna@vendor.example",
+        "published": "2026-11-26T08:00:00.000",
+        "lastModified": "2026-11-26T12:00:00.000",
+        "vulnStatus": "Analyzed",
+        "cveTags": [
+          {
+            "source": "cna@vendor.example",
+            "tags": ["crm"]
+          }
+        ],
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "PHP remote code execution in a popular CMS plugin; public exploit code is available."
+          }
+        ],
+        "metrics": {
+          "cvssMetricV30": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "3.0",
+                "baseScore": 7.5,
+                "baseSeverity": "HIGH"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

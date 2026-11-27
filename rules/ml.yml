@@ -1,0 +1,8 @@
+# Parámetros del machine learning no supervisado (S3/S12).
+# El modelo se reentrena en cada ejecución sobre el dataset recibido; la semilla fija
+# hace los resultados reproducibles.
+
+SEMILLA: 42
+ML_TOP: 10                       # tamaño de los rankings que ve la consola
+ML_ALERTA_PUNTAJE: 95            # ventanas con puntaje >= 95 sin regla que las explique
+ML_ALERTAS_MAX: 3                # máximo de alertas solo-ML por ejecución

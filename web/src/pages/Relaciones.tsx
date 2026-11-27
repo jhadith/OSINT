@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Grafo, Nodo } from '../api/types'
+import type { Caso, Grafo, Nodo } from '../api/types'
 import { Carga, Gravedad, Pagina, Panel } from '../components/ui'
-import { num } from '../lib/format'
+import { fFechaHora, num } from '../lib/format'
 import { useApi } from '../lib/useApi'
 
 const COLOR = { critica: 'var(--critica)', alta: 'var(--alta)', media: 'var(--media-tinta)', baja: 'var(--baja)' }
@@ -30,7 +30,11 @@ export default function Relaciones() {
   const { st, reintentar } = useApi(api.grafo)
   const [elegido, setSel] = useState<string | null>(null)
   return (
-    <Pagina titulo="Relaciones" bajada="Qué cuenta usó qué equipo para llegar al servidor del sistema médico. El grosor de la línea es el número de eventos.">
+    <Pagina
+      titulo="Correlaciones"
+      bajada="Un ataque se confirma cuando aparece a la vez en el firewall y en el sistema médico. Aquí se ven esas coincidencias y qué cuenta usó qué equipo para llegar al servidor."
+    >
+      <TablaCorrelaciones />
       <Carga st={st} reintentar={reintentar} filas={8}>
         {(g) => {
           const sel = elegido ?? g.nodos.find((n) => n.tipo === 'ip')?.id ?? g.nodos[0]?.id ?? ''
@@ -161,5 +165,72 @@ function Detalle({ g, id }: { g: Grafo; id: string }) {
         </Link>
       )}
     </Panel>
+  )
+}
+
+/** Por caso: lo que vio cada fuente y si coinciden (corrección de reloj incluida). */
+function TablaCorrelaciones() {
+  const { st, reintentar } = useApi(async () => {
+    const lista = await api.casos()
+    return Promise.all(lista.map((c) => api.caso(c.id)))
+  })
+  return (
+    <Carga st={st} reintentar={reintentar} filas={4}>
+      {(casos: Caso[]) => (
+        <Panel
+          titulo="Coincidencias entre fuentes"
+          bajada="Misma persona, misma ventana de tiempo, dos fuentes distintas. Si los relojes no coinciden, el motor prueba desfases de 0, -12 y +12 horas."
+        >
+          <div className="tabla-scroll">
+            <table className="tabla correlaciones">
+              <thead>
+                <tr>
+                  <th>Caso</th>
+                  <th>Firewall</th>
+                  <th aria-label="se une con" />
+                  <th>Sistema médico</th>
+                  <th>Resultado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {casos.map((c) => {
+                  const reloj = c.recorrido.find((r) => /reloj|desfase/i.test(r.detalle))
+                  const ambas = Boolean(c.firewall && c.sistemaMedico)
+                  return (
+                    <tr key={c.id}>
+                      <td>
+                        <Link to={`/casos/${c.id}`} className="enlace">
+                          {c.id}
+                        </Link>
+                        <div>{c.titulo}</div>
+                        <Gravedad g={c.gravedad} />
+                      </td>
+                      <td className="corr__fuente">
+                        <span className="mono">{c.ipOrigen}</span>
+                        <div className="muted">{fFechaHora(c.inicio)}</div>
+                        <div>{c.firewall?.resumen ?? 'Sin evento en el firewall'}</div>
+                      </td>
+                      <td className="corr__union" aria-hidden>
+                        {ambas ? '⟷' : '—'}
+                      </td>
+                      <td className="corr__fuente">
+                        <span className="mono">{c.seudonimo}</span>
+                        <div>{c.sistemaMedico?.resumen ?? 'Sin evento en el sistema médico'}</div>
+                      </td>
+                      <td>
+                        <span className={`etiqueta ${ambas ? 'etiqueta--verde' : 'etiqueta--alta'}`}>
+                          {ambas ? 'Confirmado en las dos fuentes' : 'Solo una fuente'}
+                        </span>
+                        {reloj && <div className="nota">{reloj.detalle}</div>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
+    </Carga>
   )
 }
