@@ -1,33 +1,48 @@
+# Dependabot: propone actualizaciones de dependencias.
+# - Los PR van a `dev` (flujo dev -> Pruebas -> main), nunca directo a main.
+# - Un solo PR por ecosistema y por mes, solo con parches y versiones menores.
+# - Las versiones mayores (que pueden romper el motor) se ignoran; se revisan a mano.
+# - Las alertas de seguridad de Dependabot siguen activas aparte, sin estas restricciones.
 version: 2
 updates:
   - package-ecosystem: pip
-    directory: /backend
+    directories: ["/backend", "/motor"]
+    target-branch: dev
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    labels: [dependencias, seguridad]
-  - package-ecosystem: pip
-    directory: /motor
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    labels: [dependencias, seguridad]
-  - package-ecosystem: npm
-    directory: /web
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    labels: [dependencias, seguridad]
+      interval: monthly
+    open-pull-requests-limit: 1
+    labels: [dependencias]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
-      desarrollo:
-        dependency-type: development
+      python:
+        patterns: ["*"]
+
   - package-ecosystem: npm
-    directory: /pruebas_dinamicas/e2e
+    directories: ["/web", "/pruebas_dinamicas/e2e"]
+    target-branch: dev
     schedule:
-      interval: weekly
-    labels: [dependencias, pruebas]
+      interval: monthly
+    open-pull-requests-limit: 1
+    labels: [dependencias]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      javascript:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: /
+    target-branch: dev
     schedule:
-      interval: weekly
-    labels: [dependencias, ci]
+      interval: monthly
+    open-pull-requests-limit: 1
+    labels: [dependencias]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      acciones:
+        patterns: ["*"]
