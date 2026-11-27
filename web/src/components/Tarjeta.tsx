@@ -35,8 +35,9 @@ export function Tarjeta({ titulo, dato, area, children, grande, ruta, tono }: Ta
         <div className="tj__cuerpo">{children}</div>
       </section>
       {abierta && (
-        <div className="tj-modal" role="dialog" aria-modal="true" aria-label={titulo} onClick={() => setAbierta(false)}>
-          <div className="tj-modal__caja" onClick={(e) => e.stopPropagation()}>
+        <div className="tj-modal" role="dialog" aria-modal="true" aria-label={titulo}>
+          <button type="button" className="tj-modal__fondo" aria-label="Cerrar" tabIndex={-1} onClick={() => setAbierta(false)} />
+          <div className="tj-modal__caja">
             <header className="tj-modal__cab">
               <h2>{titulo}</h2>
               {ruta && (

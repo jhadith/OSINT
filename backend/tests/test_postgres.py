@@ -1,26 +1,31 @@
-"""PostgreSQL: solo corre si SENTINEL_DB_URL apunta a una base de prueba."""
+"""PostgreSQL: las pruebas con base real corren si SENTINEL_TEST_PG_URL (o SENTINEL_DB_URL) apunta a una base
+de prueba; el pipeline levanta una como service container. Las demás corren siempre."""
 import os
 import sqlite3
 
 import pytest
 from app import almacen, bd
 
-URL = os.environ.get("SENTINEL_DB_URL", "")
-pytestmark = pytest.mark.skipif(not URL.startswith("postgresql"), reason="sin PostgreSQL configurado")
+URL = os.environ.get("SENTINEL_TEST_PG_URL") or os.environ.get("SENTINEL_DB_URL", "")
+con_pg = pytest.mark.skipif(not URL.startswith("postgresql"), reason="sin PostgreSQL configurado")
 
 
 @pytest.fixture
 def pg(tmp_path, monkeypatch):
+    monkeypatch.setenv("SENTINEL_DB_URL", URL)
+    monkeypatch.setattr(bd, "_pg_caido_hasta", 0.0)
     monkeypatch.setenv("SENTINEL_ESTADO", str(tmp_path))
     db = almacen.abrir(tmp_path / "sentinel.db")
     yield db
     db.close()
 
 
+@con_pg
 def test_usa_postgres_y_no_sqlite(pg):
     assert isinstance(pg, bd.ConexionPG) and bd.ULTIMO_MOTOR["motor"] == "postgresql"
 
 
+@con_pg
 def test_bitacora_solo_agregar_en_postgres(pg):
     import psycopg
     almacen.registrar_evento(pg, "ana", "Analista", "Prueba", "X", "detalle")
@@ -33,6 +38,7 @@ def test_bitacora_solo_agregar_en_postgres(pg):
     pg.rollback()
 
 
+@con_pg
 def test_registros_y_decisiones(pg):
     assert almacen.agregar_registro(pg, "tickets", {"codigo": "TK-1"})
     assert almacen.leer_registros(pg, "tickets") == [{"codigo": "TK-1"}]

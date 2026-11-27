@@ -210,8 +210,8 @@ function TablaCorrelaciones() {
                         <div className="muted">{fFechaHora(c.inicio)}</div>
                         <div>{c.firewall?.resumen ?? 'Sin evento en el firewall'}</div>
                       </td>
-                      <td className="corr__union" aria-hidden>
-                        {ambas ? '⟷' : '—'}
+                      <td className="corr__union">
+                        <span aria-hidden="true">{ambas ? '⟷' : '—'}</span>
                       </td>
                       <td className="corr__fuente">
                         <span className="mono">{c.seudonimo}</span>

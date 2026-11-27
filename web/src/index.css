@@ -3592,7 +3592,16 @@ main#contenido {
   padding: 3vh 3vw;
   animation: aparece 0.15s ease-out;
 }
+.tj-modal__fondo {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+}
 .tj-modal__caja {
+  position: relative;
   width: min(1180px, 94vw);
   max-height: 90vh;
   overflow: auto;

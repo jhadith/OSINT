@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import socket
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -30,23 +31,62 @@ CAMPOS_ITEM = ("fuente", "tipo", "id_externo", "titulo", "resumen", "cvss", "kev
 T0 = datetime(2026, 11, 27, 8, 0, 0)
 
 
+def _destino_bd() -> tuple[str, int] | None:
+    """Host y puerto de la base configurada en SENTINEL_DB_URL (PostgreSQL), si hay una."""
+    from urllib.parse import urlsplit
+    url = os.environ.get("SENTINEL_DB_URL", "")
+    if not url.startswith("postgresql"):
+        return None
+    u = urlsplit(url)
+    return (u.hostname or "localhost"), (u.port or 5432)
+
+
 class Red:
-    """Guarda de socket: bloquea y registra TODO intento de red dentro de los tests."""
+    """Guarda de socket: bloquea y registra todo intento de red dentro de los tests.
 
-    def __init__(self) -> None:
+    La única excepción es la base de datos de la consola (SENTINEL_DB_URL): el backend usa PostgreSQL y
+    esa conexión local no es tráfico de OSINT. Cualquier otro destino se bloquea y se registra.
+    """
+
+    def __init__(self, originales: dict) -> None:
         self.intentos: list[str] = []
+        self._orig = originales
+        self._bd = _destino_bd()
 
-    def bloquear(self, *args, **kwargs):
+    def _es_bd(self, host, puerto) -> bool:
+        if not self._bd:
+            return False
+        h, p = self._bd
+        locales = {h, "localhost", "127.0.0.1", "::1"} if h in ("localhost", "127.0.0.1", "::1") else {h}
+        return str(host) in locales and (puerto is None or int(puerto) == p)
+
+    def _bloquear(self, args):
         self.intentos.append(str(args[:1]))
         raise OSError("red bloqueada por la guarda de tests")
+
+    def getaddrinfo(self, host, port=None, *a, **k):
+        if self._es_bd(host, port):
+            return self._orig["getaddrinfo"](host, port, *a, **k)
+        return self._bloquear((host, port))
+
+    def create_connection(self, address, *a, **k):
+        if self._es_bd(*address[:2]):
+            return self._orig["create_connection"](address, *a, **k)
+        return self._bloquear((address,))
+
+    def connect(self, sock, address):
+        if isinstance(address, tuple) and self._es_bd(*address[:2]):
+            return self._orig["connect"](sock, address)
+        return self._bloquear((address,))
 
 
 @pytest.fixture(autouse=True)
 def sin_red(monkeypatch):
-    r = Red()
-    monkeypatch.setattr(socket, "create_connection", r.bloquear)
-    monkeypatch.setattr(socket, "getaddrinfo", r.bloquear)
-    monkeypatch.setattr(socket.socket, "connect", r.bloquear)
+    r = Red({"getaddrinfo": socket.getaddrinfo, "create_connection": socket.create_connection,
+             "connect": socket.socket.connect})
+    monkeypatch.setattr(socket, "getaddrinfo", r.getaddrinfo)
+    monkeypatch.setattr(socket, "create_connection", r.create_connection)
+    monkeypatch.setattr(socket.socket, "connect", lambda sock, address: r.connect(sock, address))
     return r
 
 
