@@ -1,0 +1,3 @@
+# Solo el linter de Python para el job "Lint". Regenerar con:
+#   uv pip compile ci/requirements-lint.in --generate-hashes --python-version 3.12 --python-platform x86_64-unknown-linux-gnu --only-binary :all: -o ci/requirements-lint.lock
+ruff==0.8.4

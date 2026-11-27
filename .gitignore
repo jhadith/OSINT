@@ -28,3 +28,11 @@ coverage.xml
 pruebas_dinamicas/e2e/node_modules/
 pruebas_dinamicas/e2e/reporte/
 pruebas_dinamicas/e2e/resultados/
+
+# cobertura
+web/coverage/
+.coverage*
+!.coveragerc
+
+# reportes generados
+reporte_sonarqube/

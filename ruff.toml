@@ -1,0 +1,20 @@
+# Lint del backend, el motor y las pruebas (Python). Se ejecuta en el job "Lint" del pipeline.
+#   ruff check .
+target-version = "py312"
+line-length = 120
+extend-exclude = ["web", "frontend_kit/api_mock", "datos", "datos_ejemplo"]
+
+[lint]
+# E/W: estilo PEP 8 · F: errores (imports o variables sin usar, nombres indefinidos)
+# B: bugs comunes · I: orden de imports · UP: sintaxis moderna · S: reglas de seguridad (como Bandit)
+select = ["E", "F", "W", "B", "I", "UP", "S"]
+ignore = [
+  "E501",  # largo de línea: es estilo, no un error
+  "B008",  # Depends()/Query()/File() en los parámetros es el patrón de FastAPI
+]
+
+[lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106"]          # assert y claves de prueba en las pruebas
+"pruebas_dinamicas/**" = ["S101", "S105", "S106"]
+"frontend_kit/gen_mock.py" = ["S311", "E701", "E702"]  # script del kit con datos de ejemplo
+"motor/tests/generador*.py" = ["S311", "UP031", "F841"]  # generadores de datos sintéticos: no se tocan

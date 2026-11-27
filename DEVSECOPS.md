@@ -8,12 +8,14 @@ El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `
 |---|---|---|---|
 | 1. Planificar | STRIDE, matriz de riesgos, requisitos LOPDP / HIPAA / ISO 27002 | Informe | `Informe_Propuesta_Sentinel_Salud_ESPE.docx` |
 | 2. Codificar | Secretos y datos fuera del repositorio | Gitleaks, `.gitignore`, pre-commit | Job `secretos` y `.pre-commit-config.yaml` |
+| 2. Codificar | Estilo y errores comunes del código | ruff (backend, motor y pruebas) y oxlint sin advertencias (frontend) | Job `lint` |
 | 2. Codificar | Revisión por pares | Pull requests con revisión obligatoria | Protección de rama (ver abajo) |
-| 3. Construir | Dependencias con versión fija y sin vulnerabilidades conocidas | `requirements.txt` fijado, `pip-audit`, `npm audit` | Jobs `python` y `web` |
+| 3. Construir | Dependencias con versión fija y sin vulnerabilidades conocidas | Locks con hashes (`ci/*.lock`, `--require-hashes`), `package-lock.json`, `pip-audit`, `npm audit` | Jobs `python` y `web` |
 | 4. Probar (estática) | Código Python inseguro | Bandit | Job `python` |
 | 4. Probar (estática) | SAST de Python y TypeScript | CodeQL (`security-extended`) | Job `codeql` |
 | 4. Probar (estática) | SAST, calidad, duplicación y cobertura de pruebas | SonarQube Cloud con puerta de calidad | Job `sonarqube` |
-| 4. Probar (dinámica) | Motor y API funcionan y detectan los casos | pytest con cobertura | Job `python` |
+| 4. Probar (dinámica) | Motor y API funcionan y detectan los casos; cobertura mínima de 95 % | pytest + pytest-cov (`.coveragerc` en `motor` y `backend`) | Job `python` |
+| 4. Probar | Lógica del frontend (formato, navegación, cliente de la API, sesión); cobertura mínima de 95 % | Vitest + cobertura v8 | Job `web` |
 | 4. Probar (dinámica) | Flujos completos en un navegador real: ingreso, decisión con motivo, reidentificación, permisos por rol, denuncia pública y XSS | Playwright (E2E) | Job `pruebas-dinamicas` |
 | 4. Probar (dinámica) | Seguridad de la API en vivo: 401/403 por rol, cierre de sesión, path traversal, subida de archivos, CORS, anti-spam y bloqueo por fuerza bruta | pytest + httpx contra `127.0.0.1` | Job `pruebas-dinamicas` |
 | 4. Probar (dinámica) | Vulnerabilidades web de la consola, del portal y de la API | OWASP ZAP baseline y API scan, solo sobre `127.0.0.1` | Job `dast` |
@@ -27,7 +29,9 @@ El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `
 El job `liberar` solo genera entregables si pasan `secretos`, `python`, `web`, `codeql`, `pruebas-dinamicas` y `dast`. Fallan en estos casos:
 
 - Gitleaks encuentra un secreto en cualquier commit.
-- Falla una prueba de `pytest` del motor o del backend.
+- Falla una prueba de `pytest` del motor o del backend, o de Vitest en el frontend.
+- La cobertura del motor, del backend o de la lógica del frontend baja de 95 %.
+- `ruff` u `oxlint` encuentran un problema.
 - Bandit encuentra un problema de severidad media o alta.
 - `pip-audit` o `npm audit` (nivel alto) encuentran una vulnerabilidad conocida.
 - `oxlint` o la compilación de TypeScript fallan, o la interfaz menciona a la institución.
@@ -35,6 +39,40 @@ El job `liberar` solo genera entregables si pasan `secretos`, `python`, `web`, `
 - ZAP encuentra un problema marcado como `FAIL` en `.zap/rules.tsv`: falta de CSP, clickjacking, XSS, inyección SQL o errores expuestos. Las advertencias quedan en el reporte sin bloquear.
 
 Los reportes quedan como artefactos de cada ejecución: `reportes-python` (pytest, cobertura y Bandit), `pruebas-dinamicas` (reporte HTML de Playwright con trazas, capturas y video de lo que falle, y JUnit de la API), `zap-*` (HTML y JSON de ZAP) y `entregables` (código, web compilada y `SHA256SUMS.txt`). Los hallazgos de CodeQL quedan en el artefacto `codeql-python` / `codeql-javascript-typescript` (archivo SARIF) y en el resumen de la ejecución; el job falla si hay alguno de nivel error. Si el administrador activa *Code scanning*, se puede quitar `upload: never` para verlos en **Security > Code scanning**.
+
+## Reporte de SonarQube Cloud
+
+Cada ejecución con SonarQube configurado deja el artefacto **`reporte-sonarqube`**, con:
+- `reporte.html`, listo para abrir o imprimir como PDF desde el navegador (Ctrl+P → Guardar como PDF);
+- `issues.csv`, `hotspots.csv` y `cobertura.csv`, para Excel;
+- `datos.json` con todo en crudo.
+
+El resumen de la ejecución también muestra el estado de la puerta de calidad. Para generarlo en tu equipo:
+
+```bash
+export SONAR_TOKEN=...              # sonarcloud.io > My Account > Security
+export SONAR_PROJECT_KEY=jhadith_osit
+python scripts/reporte_sonar.py --rama dev          # o --pr 27, o sin nada para la rama principal
+```
+
+En Windows (CMD), usa `set SONAR_TOKEN=...` y `set SONAR_PROJECT_KEY=...`. El reporte queda en `reporte_sonarqube/`, que no se sube a Git.
+
+## Actualizar dependencias de Python
+
+El pipeline no instala desde `requirements.txt`, sino desde archivos de bloqueo con hashes:
+- `ci/requirements-ci.lock`: todo lo que usan el motor, el backend, las pruebas, Bandit, pip-audit y ruff, incluidas las dependencias indirectas;
+- `ci/requirements-lint.lock`: solo ruff, para el job de lint.
+
+Cada paquete lleva su versión exacta y su hash SHA-256. Con `pip install --require-hashes`, pip se niega a instalar cualquier archivo que no coincida, aunque alguien publique una versión alterada con el mismo número.
+
+Si cambias una versión en `backend/requirements.txt`, `motor/requirements.txt` o `pruebas_dinamicas/api/requirements.txt`, regenera el lock e inclúyelo en el mismo PR:
+
+```bash
+uv pip compile ci/requirements-ci.in --generate-hashes --python-version 3.12 \
+  --python-platform x86_64-unknown-linux-gnu --only-binary :all: -o ci/requirements-ci.lock
+```
+
+Si se te olvida, el pipeline seguirá instalando las versiones anteriores del lock. `pip-audit` revisa el lock completo en cada ejecución.
 
 ## Publicar una versión
 
@@ -81,7 +119,8 @@ cd motor && python -m pytest -q && cd ..
 cd backend && python -m pytest -q && cd ..
 python -m bandit -q -r backend\app motor\motor -ll
 pip-audit -r backend\requirements.txt
-cd web && npm ci && npm run lint -- src && npm run build && npm audit --audit-level=high && cd ..
+ruff check .
+cd web && npm ci && npm run lint && npm run coverage && npm run build && npm audit --audit-level=high && cd ..
 ```
 
 Antes de cada commit, para que los secretos ni siquiera salgan de tu equipo:

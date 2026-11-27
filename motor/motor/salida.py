@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import config, priorizacion as pr
+from . import priorizacion as pr
 from .hallazgo import Hallazgo
 from .ingesta import fecha
 

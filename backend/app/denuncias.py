@@ -28,7 +28,7 @@ _lock = threading.Lock()
 
 
 def _ref_contacto(texto: str) -> str:
-    from motor.agendamiento import referencia_contacto   # misma función y sal que el motor
+    from motor.agendamiento import referencia_contacto  # misma función y sal que el motor
     return referencia_contacto(texto)
 
 

@@ -27,7 +27,7 @@ def episodios(t: np.ndarray, ventana: int, minimo: int) -> list[tuple[int, int]]
     siguiente_empieza = np.concatenate((empieza[1:], [True]))
     siguiente_dentro = np.concatenate((dentro[1:], [False]))
     termina = dentro & (~siguiente_dentro | siguiente_empieza)
-    return [(int(a), int(b)) for a, b in zip(np.flatnonzero(empieza), np.flatnonzero(termina))]
+    return [(int(a), int(b)) for a, b in zip(np.flatnonzero(empieza), np.flatnonzero(termina), strict=False)]
 
 
 def por_entidad(df: pd.DataFrame, clave: str, ventana: int, minimo: int) -> list[pd.DataFrame]:

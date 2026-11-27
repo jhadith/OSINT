@@ -1,0 +1,11 @@
+# Cobertura mínima exigida por el pipeline (pytest --cov falla si baja de este valor).
+[run]
+omit =
+    */__main__.py
+
+[report]
+fail_under = 95
+show_missing = true
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:

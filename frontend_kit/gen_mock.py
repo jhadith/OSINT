@@ -1,5 +1,7 @@
-import json, hashlib
+import hashlib
+import json
 from pathlib import Path
+
 M = Path("api_mock")
 def cod(p, s): return f"{p}-" + hashlib.sha256(("mock" + s).encode()).hexdigest()[:6].upper()
 def aid(s): return "A-" + hashlib.sha256(s.encode()).hexdigest()[:8].upper()
