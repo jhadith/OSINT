@@ -10,7 +10,7 @@ El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `
 | 2. Codificar | Secretos y datos fuera del repositorio | Gitleaks, `.gitignore`, pre-commit | Job `secretos` y `.pre-commit-config.yaml` |
 | 2. Codificar | Estilo y errores comunes del código | ruff (backend, motor y pruebas) y oxlint sin advertencias (frontend) | Job `lint` |
 | 2. Codificar | Revisión por pares | Pull requests con revisión obligatoria | Protección de rama (ver abajo) |
-| 3. Construir | Dependencias con versión fija y sin vulnerabilidades conocidas | `requirements.txt` fijado, `pip-audit`, `npm audit` | Jobs `python` y `web` |
+| 3. Construir | Dependencias con versión fija y sin vulnerabilidades conocidas | Locks con hashes (`ci/*.lock`, `--require-hashes`), `package-lock.json`, `pip-audit`, `npm audit` | Jobs `python` y `web` |
 | 4. Probar (estática) | Código Python inseguro | Bandit | Job `python` |
 | 4. Probar (estática) | SAST de Python y TypeScript | CodeQL (`security-extended`) | Job `codeql` |
 | 4. Probar (estática) | SAST, calidad, duplicación y cobertura de pruebas | SonarQube Cloud con puerta de calidad | Job `sonarqube` |
@@ -56,6 +56,23 @@ python scripts/reporte_sonar.py --rama dev          # o --pr 27, o sin nada para
 ```
 
 En Windows (CMD), usa `set SONAR_TOKEN=...` y `set SONAR_PROJECT_KEY=...`. El reporte queda en `reporte_sonarqube/`, que no se sube a Git.
+
+## Actualizar dependencias de Python
+
+El pipeline no instala desde `requirements.txt`, sino desde archivos de bloqueo con hashes:
+- `ci/requirements-ci.lock`: todo lo que usan el motor, el backend, las pruebas, Bandit, pip-audit y ruff, incluidas las dependencias indirectas;
+- `ci/requirements-lint.lock`: solo ruff, para el job de lint.
+
+Cada paquete lleva su versión exacta y su hash SHA-256. Con `pip install --require-hashes`, pip se niega a instalar cualquier archivo que no coincida, aunque alguien publique una versión alterada con el mismo número.
+
+Si cambias una versión en `backend/requirements.txt`, `motor/requirements.txt` o `pruebas_dinamicas/api/requirements.txt`, regenera el lock e inclúyelo en el mismo PR:
+
+```bash
+uv pip compile ci/requirements-ci.in --generate-hashes --python-version 3.12 \
+  --python-platform x86_64-unknown-linux-gnu --only-binary :all: -o ci/requirements-ci.lock
+```
+
+Si se te olvida, el pipeline seguirá instalando las versiones anteriores del lock. `pip-audit` revisa el lock completo en cada ejecución.
 
 ## Publicar una versión
 

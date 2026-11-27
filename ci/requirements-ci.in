@@ -1,0 +1,7 @@
+# Dependencias que instala el pipeline (GitHub Actions). El lock con hashes se genera con:
+#   uv pip compile ci/requirements-ci.in --generate-hashes --python-version 3.12 \
+#     --python-platform x86_64-unknown-linux-gnu --only-binary :all: -o ci/requirements-ci.lock
+-r ../backend/requirements.txt
+-r ../pruebas_dinamicas/api/requirements.txt
+pytest-cov==7.1.0
+ruff==0.8.4
