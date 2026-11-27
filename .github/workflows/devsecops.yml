@@ -48,7 +48,7 @@ jobs:
       SENTINEL_ESTADO: ${{ github.workspace }}/.ci/estado
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -173,7 +173,7 @@ jobs:
         with:
           name: web-dist
           path: web/dist
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -230,7 +230,7 @@ jobs:
         with:
           name: web-dist
           path: web/dist
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
