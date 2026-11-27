@@ -17,6 +17,7 @@ import Anomalias from './pages/Anomalias'
 import Cargar from './pages/Cargar'
 import CasoDetalle from './pages/CasoDetalle'
 import Casos from './pages/Casos'
+import CI from './pages/CI'
 import Denuncia from './pages/Denuncia'
 import Denuncias from './pages/Denuncias'
 import Ejecutiva from './pages/Ejecutiva'
@@ -68,6 +69,7 @@ createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/relaciones" element={<Con p="operativo"><Relaciones /></Con>} />
             <Route path="/cargar" element={<Con p="cargar_datos"><Cargar /></Con>} />
             <Route path="/inteligencia" element={<Con p="tecnico"><Inteligencia /></Con>} />
+            <Route path="/ci" element={<Con p="ver_ci"><CI /></Con>} />
             <Route path="/verificar" element={<Con p="verificar"><Verificar /></Con>} />
             <Route path="/accesos" element={<Con p="auditar"><Accesos /></Con>} />
           </Route>

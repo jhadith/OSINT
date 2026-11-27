@@ -27,7 +27,7 @@ ROLES = {
                                                              "cargar_datos", "tecnico", "ver_denuncias",
                                                              "gestionar_denuncias", "verificar"],
                  "descripcion": "Investiga los casos, decide y gestiona las denuncias."},
-    "ti": {"nombre": "Equipo de TI", "permisos": ["estrategico", "tecnico", "cargar_datos"],
+    "ti": {"nombre": "Equipo de TI", "permisos": ["estrategico", "tecnico", "cargar_datos", "ver_ci"],
            "descripcion": "Carga los datos y aplica reglas e indicadores en sus sistemas."},
     "salud": {"nombre": "Personal de salud", "permisos": ["verificar"],
               "descripcion": "Revisa enlaces e imágenes sospechosos antes de abrirlos."},

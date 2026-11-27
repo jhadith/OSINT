@@ -9,6 +9,7 @@ import type {
   DenunciaPublica,
   Ejecutivo,
   EntradaBitacora,
+  EstadoCI,
   Fuente,
   Grafo,
   Inteligencia,
@@ -173,6 +174,7 @@ export const api = {
 
   // técnico
   inteligencia: () => get<Inteligencia>('/inteligencia'),
+  ciEstado: () => get<EstadoCI>('/ci/estado'),
   exportar: (tipo: 'stix' | 'misp' | 'sigma') =>
     descargarArchivo(`/exportes/${tipo}`, tipo === 'sigma' ? 'reglas_sigma.zip' : `sentinel_${tipo}.json`),
 

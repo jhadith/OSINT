@@ -6,6 +6,7 @@ export type Permiso =
   | 'reidentificar'
   | 'cargar_datos'
   | 'tecnico'
+  | 'ver_ci'
   | 'ver_denuncias'
   | 'gestionar_denuncias'
   | 'verificar'
@@ -330,6 +331,25 @@ export interface Inteligencia {
   iocs: { tipo: string; valor: string; descripcion: string; casoId: string; confianza: number }[]
   stix: string
   misp: string
+}
+
+/** Resultado de un job de GitHub Actions, tal como lo escribe el pipeline. */
+export type ResultadoCI = 'success' | 'failure' | 'cancelled' | 'skipped'
+export interface CheckCI {
+  id: string
+  nombre: string
+  resultado: ResultadoCI
+  detalle: string
+}
+export interface EstadoCI {
+  disponible: boolean
+  generado: string
+  ejecucion: string
+  rama: string
+  commit: string
+  origen: string
+  estado: 'correcto' | 'parcial' | 'fallido' | 'sin_datos'
+  checks: CheckCI[]
 }
 export interface Verificacion {
   entrada: string

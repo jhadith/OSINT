@@ -378,10 +378,75 @@ jobs:
           path: reporte_sonarqube/
           retention-days: 30
 
+  # ---------- resumen: JSON con el resultado de todos los checks para la consola ----------
+  # Corre siempre (if: always()) para que el panel muestre también los jobs omitidos.
+  # Por eso no se exige como check obligatorio en la protección de rama.
+  resumen-ci:
+    name: Resumen de CI para la consola
+    needs: [secretos, lint, python, web, codeql, pruebas-dinamicas, dast, sonarqube]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Escribir estado-ci.json
+        env:
+          R_SECRETOS: ${{ needs.secretos.result }}
+          R_LINT: ${{ needs.lint.result }}
+          R_PYTHON: ${{ needs.python.result }}
+          R_WEB: ${{ needs.web.result }}
+          R_CODEQL: ${{ needs.codeql.result }}
+          R_PRUEBAS_DINAMICAS: ${{ needs.pruebas-dinamicas.result }}
+          R_DAST: ${{ needs.dast.result }}
+          R_SONARQUBE: ${{ needs.sonarqube.result }}
+          EJECUCION: ${{ github.run_id }}-${{ github.run_attempt }}
+          RAMA: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          controles = [
+              ("secretos", "Secretos (Gitleaks)", "R_SECRETOS", "Gitleaks sobre todo el código"),
+              ("lint", "Lint (backend ruff y frontend oxlint)", "R_LINT", "Sin advertencias en Python ni TypeScript"),
+              ("python", "Motor y backend (pytest, Bandit, pip-audit)", "R_PYTHON", "Pruebas, cobertura, Bandit y dependencias"),
+              ("web", "Consola web (pruebas, cobertura, build, npm audit)", "R_WEB", "Vitest, cobertura, compilación y dependencias"),
+              ("codeql", "SAST (CodeQL)", "R_CODEQL", "Hallazgos security-extended"),
+              ("pruebas-dinamicas", "Pruebas dinámicas (E2E y API en vivo)", "R_PRUEBAS_DINAMICAS", "Playwright y pytest contra 127.0.0.1"),
+              ("dast", "DAST (OWASP ZAP sobre 127.0.0.1)", "R_DAST", "Baseline web y API scan"),
+              ("sonarqube", "SonarQube Cloud (SAST + cobertura)", "R_SONARQUBE", "Puerta de calidad; se omite si no está configurado"),
+          ]
+          datos = {
+              "generado": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+              "ejecucion": os.environ["EJECUCION"],
+              "rama": os.environ["RAMA"],
+              "commit": os.environ["COMMIT"][:7],
+              "origen": "github-actions",
+              "checks": [
+                  {"id": id_, "nombre": nombre, "resultado": os.environ[variable], "detalle": detalle}
+                  for id_, nombre, variable, detalle in controles
+              ],
+          }
+          ruta = Path("web/public/estado-ci.json")
+          ruta.parent.mkdir(parents=True, exist_ok=True)
+          ruta.write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print(f"Escrito {ruta}: {len(datos['checks'])} checks")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: estado-ci
+          path: web/public/estado-ci.json
+          retention-days: 30
+
   # ---------- 5. Liberar: entregables con hash SHA-256 ----------
   liberar:
     name: Entregables y SHA-256
-    needs: [secretos, lint, python, web, codeql, pruebas-dinamicas, dast]
+    needs: [secretos, lint, python, web, codeql, pruebas-dinamicas, dast, resumen-ci]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -391,6 +456,12 @@ jobs:
         with:
           name: web-dist
           path: web/dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: estado-ci
+          path: web/public
+      - name: Copiar el resumen de CI a la web compilada
+        run: cp web/public/estado-ci.json web/dist/estado-ci.json
       - name: Empaquetar y calcular hashes
         run: |
           mkdir -p entregables
