@@ -12,7 +12,7 @@ El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `
 | 3. Construir | Dependencias con versión fija y sin vulnerabilidades conocidas | `requirements.txt` fijado, `pip-audit`, `npm audit` | Jobs `python` y `web` |
 | 4. Probar (estática) | Código Python inseguro | Bandit | Job `python` |
 | 4. Probar (estática) | SAST de Python y TypeScript | CodeQL (`security-extended`) | Job `codeql` |
-| 4. Probar (estática) | Calidad y deuda técnica | SonarCloud (opcional) | Job `sonarcloud` |
+| 4. Probar (estática) | SAST, calidad, duplicación y cobertura de pruebas | SonarQube Cloud con puerta de calidad | Job `sonarqube` |
 | 4. Probar (dinámica) | Motor y API funcionan y detectan los casos | pytest con cobertura | Job `python` |
 | 4. Probar (dinámica) | Flujos completos en un navegador real: ingreso, decisión con motivo, reidentificación, permisos por rol, denuncia pública y XSS | Playwright (E2E) | Job `pruebas-dinamicas` |
 | 4. Probar (dinámica) | Seguridad de la API en vivo: 401/403 por rol, cierre de sesión, path traversal, subida de archivos, CORS, anti-spam y bloqueo por fuerza bruta | pytest + httpx contra `127.0.0.1` | Job `pruebas-dinamicas` |
@@ -54,7 +54,16 @@ El job `liberar` crea un release de GitHub con los paquetes y su `SHA256SUMS.txt
    - Bloquea los force push.
 3. **Avisos de seguridad**: en *Settings > Code security* activa Secret scanning y Private vulnerability reporting. Las actualizaciones automáticas de Dependabot no se usan: las versiones se actualizan a mano y `pip-audit` / `npm audit` bloquean el pipeline si alguna tiene una vulnerabilidad conocida.
 4. **CodeQL**: funciona sin configurar nada; guarda los resultados como artefacto. Para verlos en la pestaña Security, quien administra el repo debe activar *Settings > Code security > Code scanning* (en repos privados requiere GitHub Advanced Security) y quitar `upload: never` del workflow.
-5. **SonarCloud (opcional)**: crea el proyecto en sonarcloud.io con la cuenta de GitHub, completa `sonar-project.properties` y agrega el secreto `SONAR_TOKEN` en *Settings > Secrets and variables > Actions*. Sin ese secreto el job solo deja un aviso y no falla.
+5. **SonarQube Cloud**:
+   1. Entra a [sonarcloud.io](https://sonarcloud.io) con tu cuenta de GitHub.
+   2. Crea el proyecto con **+ > Analyze new project**. Si `jhadith/osit` no aparece, quien administra el repo debe instalar la app de SonarQube Cloud en su cuenta. También puedes crearlo a mano dentro de tu organización.
+   3. En el proyecto, *Administration > Analysis Method*: **desactiva Automatic Analysis**. El análisis lo hace el pipeline, y con los dos activos falla.
+   4. Copia la **Organization Key** y la **Project Key**, que están en *Information*, y genera un token en *My Account > Security*.
+   5. En GitHub, *Settings > Secrets and variables > Actions*:
+      - pestaña **Secrets**: `SONAR_TOKEN` = el token;
+      - pestaña **Variables**: `SONAR_ORGANIZATION` = la organization key y `SONAR_PROJECT_KEY` = la project key.
+   6. Haz un push. El job `SonarQube Cloud (SAST + cobertura)` sube el análisis y la cobertura de pytest del motor y del backend, y falla si no pasa la puerta de calidad. Sin esos datos, solo deja un aviso.
+
 6. **Clave de demo (opcional)**: el secreto `SENTINEL_CLAVE_DEMO` cambia la contraseña que usa el backend durante el escaneo DAST.
 
 ## Correr lo mismo en tu equipo

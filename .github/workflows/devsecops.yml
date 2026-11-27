@@ -276,31 +276,44 @@ jobs:
         if: always()
         run: cat uvicorn.log || true
 
-  # ---------- Calidad continua (opcional): SonarCloud ----------
-  sonarcloud:
-    name: Puerta de calidad (SonarCloud)
+  # ---------- 4. Probar (estática): SonarQube Cloud con la cobertura de pytest ----------
+  # Se activa con el secreto SONAR_TOKEN y las variables SONAR_ORGANIZATION y SONAR_PROJECT_KEY
+  # (Settings > Secrets and variables > Actions). Sin ellos, el job solo deja un aviso.
+  sonarqube:
+    name: SonarQube Cloud (SAST + cobertura)
     needs: [python]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
     steps:
+      - name: Sin configurar
+        if: env.SONAR_TOKEN == '' || env.SONAR_ORGANIZATION == '' || env.SONAR_PROJECT_KEY == ''
+        run: echo "::notice::Para activar SonarQube Cloud agrega el secreto SONAR_TOKEN y las variables SONAR_ORGANIZATION y SONAR_PROJECT_KEY (ver DEVSECOPS.md)."
       - uses: actions/checkout@v4
-        if: env.SONAR_TOKEN != ''
+        if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
         with:
-          fetch-depth: 0
+          fetch-depth: 0   # SonarQube Cloud usa el historial para el "código nuevo"
       - uses: actions/download-artifact@v4
-        if: env.SONAR_TOKEN != ''
+        if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
         with:
           name: reportes-python
           path: reportes
-      - uses: SonarSource/sonarqube-scan-action@v5
-        if: env.SONAR_TOKEN != ''
-      - uses: SonarSource/sonarqube-quality-gate-action@v1
-        if: env.SONAR_TOKEN != ''
+      - name: Análisis (SAST, calidad y cobertura)
+        if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          args: >
+            -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+      - name: Puerta de calidad
+        if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
+        uses: SonarSource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
-      - name: SonarCloud no configurado
-        if: env.SONAR_TOKEN == ''
-        run: echo "::notice::Agrega el secreto SONAR_TOKEN y completa sonar-project.properties para activar SonarCloud."
 
   # ---------- 5. Liberar: entregables con hash SHA-256 ----------
   liberar:
