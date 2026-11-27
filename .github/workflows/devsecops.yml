@@ -6,6 +6,8 @@ name: devsecops
 
 # Todas las acciones van fijadas por SHA completo (con la versión en el comentario):
 # si alguien mueve la etiqueta de una acción, aquí sigue corriendo el mismo código.
+# Instalación segura: pip solo instala paquetes ya compilados (--only-binary=:all:) y npm no ejecuta
+# scripts de instalación (--ignore-scripts), para que un paquete comprometido no corra código en el runner.
 on:
   push:
     branches: [main, dev, Pruebas]
@@ -58,12 +60,12 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - name: Backend y motor (ruff)
         run: |
-          pip install ruff==0.8.4
+          pip install --only-binary=:all: ruff==0.8.4
           ruff check . --output-format=github
       - name: Frontend (oxlint, sin advertencias)
         working-directory: web
         run: |
-          npm ci --no-fund
+          npm ci --ignore-scripts --no-fund
           npm run lint
 
   # ---------- 3 y 4. Construir y probar: motor y backend (Python) ----------
@@ -83,8 +85,8 @@ jobs:
             motor/requirements.txt
       - name: Instalar dependencias con versión fija
         run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt pytest-cov
+          python -m pip install --only-binary=:all: --upgrade pip
+          pip install --only-binary=:all: -r backend/requirements.txt pytest-cov
       # El mínimo de cobertura (95 %) está en motor/.coveragerc y backend/.coveragerc: si baja, el paso falla.
       - name: Pruebas y cobertura del motor (mínimo 95 %)
         working-directory: motor
@@ -96,10 +98,12 @@ jobs:
         run: |
           python -m pytest -q --junitxml=../reportes/pytest-backend.xml --cov=app --cov-report=xml:../reportes/coverage-backend.xml --cov-report=html:../reportes/cobertura-backend
           { echo "### Cobertura del backend"; python -m coverage report --format=markdown; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Pruebas del generador de reportes de SonarQube
+        run: python -m pytest -q scripts/tests --junitxml=reportes/pytest-scripts.xml
       - name: Análisis estático de seguridad (Bandit)
         run: |
-          python -m bandit -r backend/app motor/motor -f json -o reportes/bandit.json --exit-zero
-          python -m bandit -q -r backend/app motor/motor -ll
+          python -m bandit -r backend/app motor/motor scripts -x scripts/tests -f json -o reportes/bandit.json --exit-zero
+          python -m bandit -q -r backend/app motor/motor scripts -x scripts/tests -ll
       - name: Dependencias con vulnerabilidades conocidas (pip-audit)
         run: pip-audit -r backend/requirements.txt --desc --format columns
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -123,7 +127,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: npm ci --no-fund
+      - run: npm ci --ignore-scripts --no-fund
       - name: Pruebas unitarias y cobertura (Vitest, mínimo 95 %)
         run: |
           npm run coverage
@@ -223,7 +227,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: pruebas_dinamicas/e2e/package-lock.json
-      - run: pip install -r backend/requirements.txt -r pruebas_dinamicas/api/requirements.txt
+      - run: |
+          pip install --only-binary=:all: -r backend/requirements.txt -r pruebas_dinamicas/api/requirements.txt
       - name: Levantar Sentinel Salud en 127.0.0.1:8010
         working-directory: backend
         run: |
@@ -233,7 +238,7 @@ jobs:
       - name: Instalar Playwright y Chromium
         working-directory: pruebas_dinamicas/e2e
         run: |
-          npm ci --no-fund
+          npm ci --ignore-scripts --no-fund
           npx playwright install --with-deps chromium
       - name: E2E en navegador (Playwright)
         working-directory: pruebas_dinamicas/e2e
@@ -275,7 +280,8 @@ jobs:
           cache-dependency-path: |
             backend/requirements.txt
             motor/requirements.txt
-      - run: pip install -r backend/requirements.txt
+      - run: |
+          pip install --only-binary=:all: -r backend/requirements.txt
       - name: Levantar Sentinel Salud en 127.0.0.1:8000
         working-directory: backend
         run: |
@@ -357,6 +363,21 @@ jobs:
         if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
         uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1
         timeout-minutes: 5
+      - name: Reporte de SonarQube Cloud (HTML, CSV y JSON)
+        if: always() && env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          RAMA: ${{ github.ref_name }}
+        run: |
+          if [ -n "$PR" ]; then alcance=(--pr "$PR"); else alcance=(--rama "$RAMA"); fi
+          python3 scripts/reporte_sonar.py --salida reporte_sonarqube "${alcance[@]}"
+          { echo "### SonarQube Cloud"; python3 scripts/reporte_sonar.py --resumen reporte_sonarqube/datos.json; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always() && env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
+        with:
+          name: reporte-sonarqube
+          path: reporte_sonarqube/
+          retention-days: 30
 
   # ---------- 5. Liberar: entregables con hash SHA-256 ----------
   liberar:

@@ -33,3 +33,6 @@ pruebas_dinamicas/e2e/resultados/
 web/coverage/
 .coverage*
 !.coveragerc
+
+# reportes generados
+reporte_sonarqube/

@@ -40,6 +40,23 @@ El job `liberar` solo genera entregables si pasan `secretos`, `python`, `web`, `
 
 Los reportes quedan como artefactos de cada ejecución: `reportes-python` (pytest, cobertura y Bandit), `pruebas-dinamicas` (reporte HTML de Playwright con trazas, capturas y video de lo que falle, y JUnit de la API), `zap-*` (HTML y JSON de ZAP) y `entregables` (código, web compilada y `SHA256SUMS.txt`). Los hallazgos de CodeQL quedan en el artefacto `codeql-python` / `codeql-javascript-typescript` (archivo SARIF) y en el resumen de la ejecución; el job falla si hay alguno de nivel error. Si el administrador activa *Code scanning*, se puede quitar `upload: never` para verlos en **Security > Code scanning**.
 
+## Reporte de SonarQube Cloud
+
+Cada ejecución con SonarQube configurado deja el artefacto **`reporte-sonarqube`**, con:
+- `reporte.html`, listo para abrir o imprimir como PDF desde el navegador (Ctrl+P → Guardar como PDF);
+- `issues.csv`, `hotspots.csv` y `cobertura.csv`, para Excel;
+- `datos.json` con todo en crudo.
+
+El resumen de la ejecución también muestra el estado de la puerta de calidad. Para generarlo en tu equipo:
+
+```bash
+export SONAR_TOKEN=...              # sonarcloud.io > My Account > Security
+export SONAR_PROJECT_KEY=jhadith_osit
+python scripts/reporte_sonar.py --rama dev          # o --pr 27, o sin nada para la rama principal
+```
+
+En Windows (CMD), usa `set SONAR_TOKEN=...` y `set SONAR_PROJECT_KEY=...`. El reporte queda en `reporte_sonarqube/`, que no se sube a Git.
+
 ## Publicar una versión
 
 ```bash
