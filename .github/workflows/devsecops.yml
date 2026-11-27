@@ -71,7 +71,7 @@ jobs:
           python -m bandit -q -r backend/app motor/motor -ll
       - name: Dependencias con vulnerabilidades conocidas (pip-audit)
         run: pip-audit -r backend/requirements.txt --desc --format columns
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: reportes-python
@@ -105,7 +105,7 @@ jobs:
           if grep -rniI "iess" src index.html | grep -v "replace(/iess/"; then
             echo "::error::La interfaz no debe mencionar a la institución."; exit 1
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web-dist
           path: web/dist/
@@ -151,7 +151,7 @@ jobs:
             echo "::error::CodeQL encontró $graves hallazgos de nivel error. Descarga el artefacto codeql-${{ matrix.language }} para verlos."
             exit 1
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: codeql-${{ matrix.language }}
@@ -203,7 +203,7 @@ jobs:
       - name: Seguridad de la API en vivo (pytest + httpx)
         working-directory: pruebas_dinamicas/api
         run: python -m pytest -v --junitxml=../../reportes/pytest-api-vivo.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: pruebas-dinamicas
@@ -322,7 +322,7 @@ jobs:
           git archive --format=tar.gz --prefix=sentinel-salud/ -o "entregables/sentinel-salud-fuente-${VERSION}.tar.gz" HEAD
           tar -czf "entregables/sentinel-salud-web-${VERSION}.tar.gz" -C web dist
           cd entregables && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: entregables
           path: entregables/
