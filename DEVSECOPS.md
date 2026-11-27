@@ -8,12 +8,14 @@ El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `
 |---|---|---|---|
 | 1. Planificar | STRIDE, matriz de riesgos, requisitos LOPDP / HIPAA / ISO 27002 | Informe | `Informe_Propuesta_Sentinel_Salud_ESPE.docx` |
 | 2. Codificar | Secretos y datos fuera del repositorio | Gitleaks, `.gitignore`, pre-commit | Job `secretos` y `.pre-commit-config.yaml` |
+| 2. Codificar | Estilo y errores comunes del código | ruff (backend, motor y pruebas) y oxlint sin advertencias (frontend) | Job `lint` |
 | 2. Codificar | Revisión por pares | Pull requests con revisión obligatoria | Protección de rama (ver abajo) |
 | 3. Construir | Dependencias con versión fija y sin vulnerabilidades conocidas | `requirements.txt` fijado, `pip-audit`, `npm audit` | Jobs `python` y `web` |
 | 4. Probar (estática) | Código Python inseguro | Bandit | Job `python` |
 | 4. Probar (estática) | SAST de Python y TypeScript | CodeQL (`security-extended`) | Job `codeql` |
 | 4. Probar (estática) | SAST, calidad, duplicación y cobertura de pruebas | SonarQube Cloud con puerta de calidad | Job `sonarqube` |
-| 4. Probar (dinámica) | Motor y API funcionan y detectan los casos | pytest con cobertura | Job `python` |
+| 4. Probar (dinámica) | Motor y API funcionan y detectan los casos; cobertura mínima de 95 % | pytest + pytest-cov (`.coveragerc` en `motor` y `backend`) | Job `python` |
+| 4. Probar | Lógica del frontend (formato, navegación, cliente de la API, sesión); cobertura mínima de 95 % | Vitest + cobertura v8 | Job `web` |
 | 4. Probar (dinámica) | Flujos completos en un navegador real: ingreso, decisión con motivo, reidentificación, permisos por rol, denuncia pública y XSS | Playwright (E2E) | Job `pruebas-dinamicas` |
 | 4. Probar (dinámica) | Seguridad de la API en vivo: 401/403 por rol, cierre de sesión, path traversal, subida de archivos, CORS, anti-spam y bloqueo por fuerza bruta | pytest + httpx contra `127.0.0.1` | Job `pruebas-dinamicas` |
 | 4. Probar (dinámica) | Vulnerabilidades web de la consola, del portal y de la API | OWASP ZAP baseline y API scan, solo sobre `127.0.0.1` | Job `dast` |
@@ -27,7 +29,9 @@ El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `
 El job `liberar` solo genera entregables si pasan `secretos`, `python`, `web`, `codeql`, `pruebas-dinamicas` y `dast`. Fallan en estos casos:
 
 - Gitleaks encuentra un secreto en cualquier commit.
-- Falla una prueba de `pytest` del motor o del backend.
+- Falla una prueba de `pytest` del motor o del backend, o de Vitest en el frontend.
+- La cobertura del motor, del backend o de la lógica del frontend baja de 95 %.
+- `ruff` u `oxlint` encuentran un problema.
 - Bandit encuentra un problema de severidad media o alta.
 - `pip-audit` o `npm audit` (nivel alto) encuentran una vulnerabilidad conocida.
 - `oxlint` o la compilación de TypeScript fallan, o la interfaz menciona a la institución.
@@ -81,7 +85,8 @@ cd motor && python -m pytest -q && cd ..
 cd backend && python -m pytest -q && cd ..
 python -m bandit -q -r backend\app motor\motor -ll
 pip-audit -r backend\requirements.txt
-cd web && npm ci && npm run lint -- src && npm run build && npm audit --audit-level=high && cd ..
+ruff check .
+cd web && npm ci && npm run lint && npm run coverage && npm run build && npm audit --audit-level=high && cd ..
 ```
 
 Antes de cada commit, para que los secretos ni siquiera salgan de tu equipo:
