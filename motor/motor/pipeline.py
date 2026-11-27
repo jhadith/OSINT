@@ -10,9 +10,9 @@ Capas: reglas sobre cada fuente -> correlación firewall + sistema médico -> mo
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import re
-import datetime as dt
 import time
 from pathlib import Path
 
@@ -153,7 +153,7 @@ def ejecutar(ruta_fw: Path, ruta_med: Path, carpeta: Path, con_ml: bool = True, 
 
     _log("5/7 Recuperando evidencia del firewall")
     filas = ingesta.filas_fw(ruta_fw, {f for h in hallazgos for f in h.filas_fw}, tam)
-    ip_de = dict(zip(filas["fila"], filas["IP_Origen"]))
+    ip_de = dict(zip(filas["fila"], filas["IP_Origen"], strict=False))
     for h in hallazgos:
         if h.filas_fw:
             h.ip = ip_de.get(h.filas_fw[0], "")
@@ -173,7 +173,7 @@ def ejecutar(ruta_fw: Path, ruta_med: Path, carpeta: Path, con_ml: bool = True, 
     seud = salida.Seudonimos(restringido)
     todos = hallazgos + g_fw + g_med
     alertas = [salida.alerta(h, seud, filas, med) for h in todos]
-    pares = list(zip(todos, alertas))
+    pares = list(zip(todos, alertas, strict=False))
     alertas = salida.numerar(alertas)
     cuentas = {a["cuenta"] for a in alertas if a["cuenta"] and not any(h.general and h.cuenta == a["cuenta"]
                                                                        for h in g_med)}

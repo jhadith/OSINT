@@ -98,7 +98,7 @@ class TablaRedes:
     nombre: list
 
     @classmethod
-    def desde_csv(cls, ruta: Path) -> "TablaRedes":
+    def desde_csv(cls, ruta: Path) -> TablaRedes:
         t = pd.read_csv(ruta, dtype=str)
         redes = [ipaddress.ip_network(r, strict=False) for r in t["red"]]
         orden = np.argsort([int(r.network_address) for r in redes])
@@ -117,8 +117,8 @@ class TablaRedes:
         n = ips.map(a_int).to_numpy(dtype="int64")
         k = np.searchsorted(self.inicio, n, side="right") - 1
         ok = (k >= 0) & (n >= 0) & (n <= self.fin[np.clip(k, 0, None)])
-        return pd.DataFrame({"tipo_red": [self.tipo[i] if o else "desconocida" for i, o in zip(k, ok)],
-                             "red": [self.nombre[i] if o else "" for i, o in zip(k, ok)]}, index=ips.index)
+        return pd.DataFrame({"tipo_red": [self.tipo[i] if o else "desconocida" for i, o in zip(k, ok, strict=False)],
+                             "red": [self.nombre[i] if o else "" for i, o in zip(k, ok, strict=False)]}, index=ips.index)
 
 
 def enriquecer(df: pd.DataFrame, redes: TablaRedes | None) -> pd.DataFrame:

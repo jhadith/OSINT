@@ -13,7 +13,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import config, priorizacion as pr
+from . import config
+from . import priorizacion as pr
 from .ingesta import fecha
 from .reglas_med import _acciones
 from .salida import limpiar
@@ -246,7 +247,7 @@ def anomalias(r, col: str, stats: pd.DataFrame, fuente: str, casos_por: dict, se
     t = t.assign(ent=t[col].astype(str))
     top = pd.concat([t.head(100), t[t["ent"].isin(casos_por) & ~t.index.isin(t.head(100).index)]])
     filas = []
-    for k, x in enumerate(top.itertuples(), 1):
+    for _k, x in enumerate(top.itertuples(), 1):
         ent = x.ent
         st = stats.loc[ent] if ent in stats.index else None
         motivo = (x.por_que.split(" | ")[0] if x.por_que else "Sin rasgo destacado en su peor ventana")

@@ -108,7 +108,7 @@ def analisis_uno(i: str, s: Sesion = Depends(requiere("estrategico"))):
     try:
         return analisis.obtener(i)
     except KeyError:
-        raise HTTPException(404, "No existe ese análisis.")
+        raise HTTPException(404, "No existe ese análisis.") from None
 
 
 def _reportes() -> list[str]:
@@ -125,7 +125,7 @@ def analisis_carpeta(fw_origen: str = Form(...), fw: str = Form(...), med_origen
         i = analisis.nuevo(s.nombre)
         meta = analisis.lanzar(i, s.nombre, rutas[0], rutas[1], rutas[2], _reportes(), _al_terminar)
     except (ValueError, RuntimeError) as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     estado.bitacora(s.nombre, _rol(s), "Análisis iniciado", i, f"{analisis.mostrar(fw)} y {analisis.mostrar(med)}" +
                     (f" con {analisis.mostrar(citas)}" if citas else ""))
     return meta
@@ -146,9 +146,9 @@ def analisis_subir(firewall: UploadFile = File(...), sistema_medico: UploadFile 
         ci = analisis.guardar_subida(i, "agendamiento", agendamiento.file) if agendamiento else None
         meta = analisis.lanzar(i, s.nombre, fw, med, ci, _reportes(), _al_terminar)
     except (ValueError, RuntimeError) as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     nombres = [analisis.mostrar(f.filename or "") if f else None for f in (firewall, sistema_medico, agendamiento)]
-    meta["archivos"] = dict(zip(("firewall", "sistema_medico", "agendamiento"), nombres))
+    meta["archivos"] = dict(zip(("firewall", "sistema_medico", "agendamiento"), nombres, strict=False))
     estado.bitacora(s.nombre, _rol(s), "Análisis iniciado", i, f"Archivos subidos: {nombres[0]} y {nombres[1]}")
     return meta
 
@@ -158,9 +158,9 @@ def analisis_activar(i: str, s: Sesion = Depends(requiere("cargar_datos"))):
     try:
         analisis.activar(i)
     except KeyError:
-        raise HTTPException(404, "No existe ese análisis.")
+        raise HTTPException(404, "No existe ese análisis.") from None
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     estado.bitacora(s.nombre, _rol(s), "Análisis activado", i, "La consola muestra este análisis")
     return {"ok": True}
 
