@@ -1,0 +1,30 @@
+# datos y estado: nunca van al repositorio
+datos/*.csv
+datos/*.CSV
+backend/estado/
+**/restringido/
+**/salidas/
+# entornos y compilados
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+web/node_modules/
+web/dist/
+web/node_modules/.tmp/
+# secretos
+.env
+*.env
+
+# reportes locales de seguridad
+reportes/
+.coverage
+coverage.xml
+.ci/
+.zap/*.html
+.zap/*.json
+
+# pruebas dinámicas
+pruebas_dinamicas/e2e/node_modules/
+pruebas_dinamicas/e2e/reporte/
+pruebas_dinamicas/e2e/resultados/

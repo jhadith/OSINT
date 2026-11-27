@@ -1,0 +1,335 @@
+# Pipeline DevSecOps de Sentinel Salud.
+# Cubre las fases del informe: codificar (secretos), construir (dependencias),
+# probar (estáticas y dinámicas), liberar (puerta de calidad y SHA-256).
+# Todo corre en el runner de GitHub contra 127.0.0.1: nunca contra sistemas reales.
+name: devsecops
+
+on:
+  push:
+    branches: [main, dev, Pruebas]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: devsecops-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+
+jobs:
+  # ---------- 2. Codificar: secretos fuera del repositorio ----------
+  secretos:
+    name: Secretos (Gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # en un PR, Gitleaks lista los commits del PR
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: false   # no comenta en el PR: así no necesita permiso de escritura
+
+  # ---------- 3 y 4. Construir y probar: motor y backend (Python) ----------
+  python:
+    name: Motor y backend (pytest, Bandit, pip-audit)
+    runs-on: ubuntu-latest
+    env:
+      SENTINEL_ESTADO: ${{ github.workspace }}/.ci/estado
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            motor/requirements.txt
+      - name: Instalar dependencias con versión fija
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest-cov
+      - name: Pruebas del motor
+        working-directory: motor
+        run: python -m pytest -q --junitxml=../reportes/pytest-motor.xml --cov=motor --cov-report=xml:../reportes/coverage-motor.xml
+      - name: Pruebas del backend
+        working-directory: backend
+        run: python -m pytest -q --junitxml=../reportes/pytest-backend.xml --cov=app --cov-report=xml:../reportes/coverage-backend.xml
+      - name: Análisis estático de seguridad (Bandit)
+        run: |
+          python -m bandit -r backend/app motor/motor -f json -o reportes/bandit.json --exit-zero
+          python -m bandit -q -r backend/app motor/motor -ll
+      - name: Dependencias con vulnerabilidades conocidas (pip-audit)
+        run: pip-audit -r backend/requirements.txt --desc --format columns
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reportes-python
+          path: reportes/
+          retention-days: 14
+
+  # ---------- 3 y 4. Construir y probar: consola web (React) ----------
+  web:
+    name: Consola web (lint, build, npm audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-fund
+      - name: Lint
+        run: npm run lint -- src
+      - name: Tipos y compilación
+        run: npm run build
+      - name: Dependencias con vulnerabilidades conocidas (npm audit)
+        run: npm audit --audit-level=high
+      - name: Sin referencias institucionales en la interfaz
+        run: |
+          # Se permite la expresión que quita ese nombre de los archivos subidos: replace(/iess/gi, ...)
+          if grep -rniI "iess" src index.html | grep -v "replace(/iess/"; then
+            echo "::error::La interfaz no debe mencionar a la institución."; exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist/
+          retention-days: 7
+
+  # ---------- 4. Probar (estática): SAST con CodeQL ----------
+  codeql:
+    name: SAST (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+      # El repositorio no tiene "Code scanning" activado, así que los resultados no se suben a GitHub:
+      # se guardan como artefacto y el job falla si CodeQL encuentra algo de nivel "error".
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
+          upload: never
+          output: sarif-codeql
+      - name: Revisar hallazgos de CodeQL
+        run: |
+          sarif=$(find sarif-codeql -name "*.sarif" | head -1)
+          total=$(jq '[.runs[].results[]] | length' "$sarif")
+          graves=$(jq '[.runs[].results[] | select(.level == "error")] | length' "$sarif")
+          echo "Hallazgos: $total en total, $graves de nivel error."
+          jq -r '.runs[].results[] | "- [\(.level)] \(.ruleId): \(.message.text | split("\n")[0]) (\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine))"' "$sarif" | head -50
+          {
+            echo "### CodeQL (${{ matrix.language }})"
+            echo "Hallazgos: **$total** en total, **$graves** de nivel error."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$graves" -gt 0 ]; then
+            echo "::error::CodeQL encontró $graves hallazgos de nivel error. Descarga el artefacto codeql-${{ matrix.language }} para verlos."
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codeql-${{ matrix.language }}
+          path: sarif-codeql/
+          retention-days: 14
+
+  # ---------- 4. Probar (dinámica): E2E y seguridad de la API sobre la app en ejecución ----------
+  pruebas-dinamicas:
+    name: Pruebas dinámicas (E2E Playwright y API en vivo)
+    needs: [python, web]
+    runs-on: ubuntu-latest
+    env:
+      SENTINEL_URL: http://127.0.0.1:8010
+      SENTINEL_ESTADO: ${{ github.workspace }}/.ci/estado
+      SENTINEL_CLAVE_DEMO: ${{ secrets.SENTINEL_CLAVE_DEMO || 'clave-solo-para-ci' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            motor/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pruebas_dinamicas/e2e/package-lock.json
+      - run: pip install -r backend/requirements.txt -r pruebas_dinamicas/api/requirements.txt
+      - name: Levantar Sentinel Salud en 127.0.0.1:8010
+        working-directory: backend
+        run: |
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8010 > ../uvicorn-e2e.log 2>&1 &
+          for _ in $(seq 1 30); do curl -sf "$SENTINEL_URL/api/acceso/roles" >/dev/null && exit 0; sleep 2; done
+          cat ../uvicorn-e2e.log; exit 1
+      - name: Instalar Playwright y Chromium
+        working-directory: pruebas_dinamicas/e2e
+        run: |
+          npm ci --no-fund
+          npx playwright install --with-deps chromium
+      - name: E2E en navegador (Playwright)
+        working-directory: pruebas_dinamicas/e2e
+        run: npx playwright test
+      - name: Seguridad de la API en vivo (pytest + httpx)
+        working-directory: pruebas_dinamicas/api
+        run: python -m pytest -v --junitxml=../../reportes/pytest-api-vivo.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pruebas-dinamicas
+          path: |
+            pruebas_dinamicas/e2e/reporte/
+            pruebas_dinamicas/e2e/resultados/
+            reportes/pytest-api-vivo.xml
+            uvicorn-e2e.log
+          retention-days: 14
+
+  # ---------- 4. Probar (dinámica): DAST con OWASP ZAP contra localhost ----------
+  dast:
+    name: DAST (OWASP ZAP sobre 127.0.0.1)
+    needs: [python, web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SENTINEL_ESTADO: ${{ github.workspace }}/.ci/estado
+      SENTINEL_CLAVE_DEMO: ${{ secrets.SENTINEL_CLAVE_DEMO || 'clave-solo-para-ci' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            motor/requirements.txt
+      - run: pip install -r backend/requirements.txt
+      - name: Levantar Sentinel Salud en 127.0.0.1:8000
+        working-directory: backend
+        run: |
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../uvicorn.log 2>&1 &
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:8000/api/acceso/roles >/dev/null && exit 0; sleep 2; done
+          cat ../uvicorn.log; exit 1
+      - name: ZAP baseline (consola)
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://127.0.0.1:8000/
+          rules_file_name: .zap/rules.tsv
+          cmd_options: -a -I -m 3
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-baseline-consola
+      - name: ZAP baseline (portal de denuncias)
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://127.0.0.1:8000/denuncia
+          rules_file_name: .zap/rules.tsv
+          cmd_options: -a -I -m 3
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-baseline-denuncia
+      - name: ZAP API scan (OpenAPI)
+        uses: zaproxy/action-api-scan@v0.9.0
+        with:
+          target: http://127.0.0.1:8000/openapi.json
+          format: openapi
+          rules_file_name: .zap/rules.tsv
+          cmd_options: -a -I
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-api
+      - name: Log del servidor
+        if: always()
+        run: cat uvicorn.log || true
+
+  # ---------- Calidad continua (opcional): SonarCloud ----------
+  sonarcloud:
+    name: Puerta de calidad (SonarCloud)
+    needs: [python]
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          name: reportes-python
+          path: reportes
+      - uses: SonarSource/sonarqube-scan-action@v5
+        if: env.SONAR_TOKEN != ''
+      - uses: SonarSource/sonarqube-quality-gate-action@v1
+        if: env.SONAR_TOKEN != ''
+        timeout-minutes: 5
+      - name: SonarCloud no configurado
+        if: env.SONAR_TOKEN == ''
+        run: echo "::notice::Agrega el secreto SONAR_TOKEN y completa sonar-project.properties para activar SonarCloud."
+
+  # ---------- 5. Liberar: entregables con hash SHA-256 ----------
+  liberar:
+    name: Entregables y SHA-256
+    needs: [secretos, python, web, codeql, pruebas-dinamicas, dast]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+      - name: Empaquetar y calcular hashes
+        run: |
+          mkdir -p entregables
+          VERSION="${GITHUB_REF_NAME//\//-}-${GITHUB_SHA::7}"
+          git archive --format=tar.gz --prefix=sentinel-salud/ -o "entregables/sentinel-salud-fuente-${VERSION}.tar.gz" HEAD
+          tar -czf "entregables/sentinel-salud-web-${VERSION}.tar.gz" -C web dist
+          cd entregables && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entregables
+          path: entregables/
+          retention-days: 30
+      - name: Publicar release (solo con etiqueta v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: entregables/*
+          generate_release_notes: true

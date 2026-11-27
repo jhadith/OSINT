@@ -1,0 +1,86 @@
+[
+  {
+    "id": "5.7",
+    "nombre": "Inteligencia de amenazas",
+    "hallazgo": "Toda la plataforma",
+    "estado": "Se implementa con esta solución"
+  },
+  {
+    "id": "5.9",
+    "nombre": "Inventario de activos",
+    "hallazgo": "Inventario de activos de información",
+    "estado": "Propuesto"
+  },
+  {
+    "id": "5.15 · 5.16 · 5.18",
+    "nombre": "Acceso, identidades y derechos",
+    "hallazgo": "Cuentas genéricas y cuenta de un solo uso",
+    "estado": "Brecha"
+  },
+  {
+    "id": "5.17 · 8.5",
+    "nombre": "Autenticación",
+    "hallazgo": "Fuerza bruta y escaneo (casos 1 y 2)",
+    "estado": "Brecha"
+  },
+  {
+    "id": "5.24 – 5.28",
+    "nombre": "Gestión de incidentes",
+    "hallazgo": "Respuesta a los casos 3 y 4",
+    "estado": "Propuesto"
+  },
+  {
+    "id": "5.34",
+    "nombre": "Privacidad y datos personales",
+    "hallazgo": "Seudónimos y LOPDP",
+    "estado": "Cubierto en la plataforma"
+  },
+  {
+    "id": "8.2",
+    "nombre": "Accesos privilegiados",
+    "hallazgo": "Cambios de nivel y activaciones concentradas",
+    "estado": "Brecha"
+  },
+  {
+    "id": "8.7 · 8.13",
+    "nombre": "Malware y respaldos",
+    "hallazgo": "Riesgo de ransomware",
+    "estado": "Por verificar"
+  },
+  {
+    "id": "8.11",
+    "nombre": "Enmascaramiento de datos",
+    "hallazgo": "Seudónimos en reportes y tableros",
+    "estado": "Cubierto en la plataforma"
+  },
+  {
+    "id": "8.12",
+    "nombre": "Prevención de fuga de datos",
+    "hallazgo": "Caso 3",
+    "estado": "Brecha"
+  },
+  {
+    "id": "8.15 · 8.16",
+    "nombre": "Registro y monitoreo",
+    "hallazgo": "Reglas y machine learning",
+    "estado": "Se implementa con esta solución"
+  },
+  {
+    "id": "8.17",
+    "nombre": "Sincronización de relojes",
+    "hallazgo": "12 horas de diferencia en el caso 4",
+    "estado": "Brecha"
+  },
+  {
+    "id": "8.20 – 8.22",
+    "nombre": "Redes y segregación",
+    "hallazgo": "Servicios inseguros; atacantes junto al servidor",
+    "estado": "Brecha"
+  },
+  {
+    "id": "8.25 · 8.28",
+    "nombre": "Desarrollo seguro",
+    "hallazgo": "Ciclo DevSecOps",
+    "estado": "Cubierto en la plataforma"
+  }
+]

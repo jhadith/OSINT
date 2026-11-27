@@ -1,0 +1,15 @@
+{
+  "decisiones": [],
+  "avisos_telegram": [
+    {
+      "fecha_envio": "2026-11-26 15:00:05",
+      "alerta": "A-BB607F4E",
+      "estado": "simulado"
+    },
+    {
+      "fecha_envio": "2026-11-26 15:00:05",
+      "alerta": "A-41481881",
+      "estado": "simulado"
+    }
+  ]
+}

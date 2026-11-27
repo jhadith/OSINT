@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencias, seguridad]
+  - package-ecosystem: pip
+    directory: /motor
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencias, seguridad]
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencias, seguridad]
+    groups:
+      desarrollo:
+        dependency-type: development
+  - package-ecosystem: npm
+    directory: /pruebas_dinamicas/e2e
+    schedule:
+      interval: weekly
+    labels: [dependencias, pruebas]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencias, ci]

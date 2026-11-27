@@ -1,0 +1,14 @@
+# Configuración de Gitleaks: usa todas las reglas por defecto y solo excluye
+# datos sintéticos de ejemplo, que contienen identificadores aleatorios.
+title = "Sentinel Salud"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Datos sintéticos y respuestas de ejemplo, sin secretos reales"
+paths = [
+  '''datos_ejemplo/.*\.csv$''',
+  '''frontend_kit/api_mock/.*\.json$''',
+  '''(^|/)package-lock\.json$''',
+]

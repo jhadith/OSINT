@@ -1,0 +1,127 @@
+{
+  "nota": "Hipótesis de ejemplo: ThreatPulse está en diseño. No son lecturas reales de esas fuentes.",
+  "tendencias": [
+    {
+      "id": "T-01",
+      "titulo": "Ransomware que entra por SMB expuesto en redes hospitalarias",
+      "fuente": "CISA",
+      "fecha": "2026-11-18",
+      "relevancia": 5,
+      "exposicion": 5,
+      "impacto": 5,
+      "tecnicas": [
+        "T1486",
+        "T1021.002"
+      ],
+      "resumen": "Campañas que aprovechan SMBv1 y servicios sin cifrado para cifrar sistemas clínicos.",
+      "serie": [
+        2,
+        3,
+        3,
+        4,
+        6,
+        7,
+        9,
+        12
+      ],
+      "exposicionLocal": "SMBv1 y NetBIOS permitidos hacia el servidor médico."
+    },
+    {
+      "id": "T-02",
+      "titulo": "Abuso de cuentas válidas por personal interno",
+      "fuente": "HHS",
+      "fecha": "2026-11-12",
+      "relevancia": 5,
+      "exposicion": 4,
+      "impacto": 4,
+      "tecnicas": [
+        "T1078"
+      ],
+      "resumen": "Accesos con credenciales legítimas para consultar o vender historias clínicas.",
+      "serie": [
+        4,
+        4,
+        5,
+        5,
+        6,
+        6,
+        7,
+        8
+      ],
+      "exposicionLocal": "Cuentas genéricas usadas por muchas personas y una cuenta de un solo uso (caso 4)."
+    },
+    {
+      "id": "T-03",
+      "titulo": "Phishing de credenciales dirigido a personal clínico",
+      "fuente": "ENISA",
+      "fecha": "2026-11-05",
+      "relevancia": 4,
+      "exposicion": 3,
+      "impacto": 4,
+      "tecnicas": [
+        "T1566",
+        "T1056"
+      ],
+      "resumen": "Correos y mensajes que imitan avisos internos para robar usuario y clave.",
+      "serie": [
+        5,
+        6,
+        6,
+        7,
+        7,
+        8,
+        8,
+        9
+      ],
+      "exposicionLocal": "El módulo Verificar permite al personal revisar enlaces antes de abrirlos."
+    },
+    {
+      "id": "T-04",
+      "titulo": "Exfiltración de datos por SSH y SFTP",
+      "fuente": "MITRE ATT&CK",
+      "fecha": "2026-10-29",
+      "relevancia": 4,
+      "exposicion": 4,
+      "impacto": 5,
+      "tecnicas": [
+        "T1048"
+      ],
+      "resumen": "Extracción de datos por canales cifrados permitidos que pasan como administración.",
+      "serie": [
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        6
+      ],
+      "exposicionLocal": "SSH al servidor médico abierto desde el mismo segmento (caso 3)."
+    },
+    {
+      "id": "T-05",
+      "titulo": "Fuerza bruta sobre servicios heredados",
+      "fuente": "ENISA",
+      "fecha": "2026-10-21",
+      "relevancia": 3,
+      "exposicion": 4,
+      "impacto": 3,
+      "tecnicas": [
+        "T1110"
+      ],
+      "resumen": "Ataques automatizados contra Telnet y servicios sin bloqueo por intentos.",
+      "serie": [
+        6,
+        6,
+        5,
+        6,
+        5,
+        5,
+        6,
+        5
+      ],
+      "exposicionLocal": "Telnet permitido hacia el servidor médico (caso 1)."
+    }
+  ]
+}

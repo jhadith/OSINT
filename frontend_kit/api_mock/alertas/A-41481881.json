@@ -1,0 +1,72 @@
+{
+  "caso": "Caso 4",
+  "regla": "cuenta_rara+firewall",
+  "titulo": "Cuenta fantasma con descarga",
+  "gravedad": "Crítica",
+  "puntaje": 25,
+  "fuente": "correlacion",
+  "inicio": "2026-10-24 10:40:00",
+  "fin": "2026-10-24 10:40:15",
+  "ip_origen": "10.10.100.40",
+  "cuenta": "WXY1210010",
+  "usuario_firewall": "U-3C594B",
+  "persona": "P-F6136B",
+  "tecnicas": [
+    "T1078",
+    "T1021.004",
+    "T1213"
+  ],
+  "eventos_firewall": 1,
+  "eventos_sistema_medico": 2,
+  "resumen": "La cuenta solo tiene 2 eventos en el mes: ingreso y descarga en 15 s. En el firewall hay 1 conexión SSH permitida desde la misma IP, con el reloj desfasado 12 h.",
+  "acciones": [
+    "Suspender la cuenta WXY1210010",
+    "Aislar el equipo 10.10.100.40",
+    "Revisar quién creó la cuenta",
+    "Evaluar la notificación de vulneración (LOPDP)"
+  ],
+  "riesgo": "R1",
+  "cid": [
+    "Confidencialidad"
+  ],
+  "linea": [
+    {
+      "fecha_hora": "2026-10-24 10:40:00",
+      "fuente": "Sistema médico",
+      "evento": "Ingreso al sistema",
+      "cantidad": 1
+    },
+    {
+      "fecha_hora": "2026-10-24 10:40:15",
+      "fuente": "Sistema médico",
+      "evento": "Descarga",
+      "cantidad": 1
+    },
+    {
+      "fecha_hora": "2026-10-24 22:40:05",
+      "fuente": "Firewall",
+      "evento": "SSH puerto 22 permitido (reloj +12 h)",
+      "cantidad": 1
+    }
+  ],
+  "id": "A-41481881",
+  "estado": "pendiente",
+  "tecnicas_detalle": [
+    {
+      "id": "T1078",
+      "nombre": "Cuentas válidas",
+      "tactica": "Acceso inicial"
+    },
+    {
+      "id": "T1021.004",
+      "nombre": "Servicios remotos: SSH",
+      "tactica": "Movimiento lateral"
+    },
+    {
+      "id": "T1213",
+      "nombre": "Datos de repositorios de información",
+      "tactica": "Recolección"
+    }
+  ],
+  "aviso_telegram": true
+}

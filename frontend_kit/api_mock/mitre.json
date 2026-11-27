@@ -1,0 +1,44 @@
+[
+  {
+    "id": "T1110",
+    "nombre": "Fuerza bruta",
+    "tactica": "Acceso a credenciales",
+    "alertas": 2
+  },
+  {
+    "id": "T1046",
+    "nombre": "Descubrimiento de servicios de red",
+    "tactica": "Descubrimiento",
+    "alertas": 1
+  },
+  {
+    "id": "T1021.004",
+    "nombre": "Servicios remotos: SSH",
+    "tactica": "Movimiento lateral",
+    "alertas": 2
+  },
+  {
+    "id": "T1048",
+    "nombre": "Exfiltración por protocolo alternativo",
+    "tactica": "Exfiltración",
+    "alertas": 1
+  },
+  {
+    "id": "T1078",
+    "nombre": "Cuentas válidas",
+    "tactica": "Acceso inicial",
+    "alertas": 2
+  },
+  {
+    "id": "T1098",
+    "nombre": "Manipulación de cuentas",
+    "tactica": "Persistencia",
+    "alertas": 1
+  },
+  {
+    "id": "T1213",
+    "nombre": "Datos de repositorios de información",
+    "tactica": "Recolección",
+    "alertas": 1
+  }
+]
