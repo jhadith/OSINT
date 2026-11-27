@@ -54,7 +54,7 @@ export default function Listas() {
       setOk('')
       return
     }
-    manejar(
+    void manejar(
       () => api.listasResolver(id, aprobar, motivo.trim()),
       aprobar ? 'Solicitud aprobada: el indicador ya está activo.' : 'Solicitud rechazada.',
     )
@@ -201,7 +201,7 @@ function AltaIndicador({ onAlta }: { onAlta: (tipo: TipoLista, valor: string, et
         Etiqueta (opcional)
         <input value={etiqueta} onChange={(e) => setEtiqueta(e.target.value)} placeholder="Quién lo puso y por qué" maxLength={200} />
       </label>
-      <button className="boton" disabled={!valor.trim()}>
+      <button type="submit" className="boton" disabled={!valor.trim()}>
         <Plus size={16} aria-hidden /> Añadir al catálogo
       </button>
     </form>
