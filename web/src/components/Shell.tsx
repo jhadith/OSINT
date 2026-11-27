@@ -1,4 +1,4 @@
-import { Database, KeyRound, Lock, LogOut, Menu, X } from 'lucide-react'
+import { Bell, Database, KeyRound, Lock, LogOut, Menu, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
@@ -14,6 +14,7 @@ export function Shell() {
   const [acceso, setAcceso] = useState(false)
   const [lista, setLista] = useState<ListaAnalisis | null>(null)
   const [pendientes, setPendientes] = useState(0)
+  const [sinLeer, setSinLeer] = useState(0)
   const loc = useLocation()
   const ir = useNavigate()
 
@@ -26,6 +27,19 @@ export function Shell() {
         .tickets()
         .then((t) => setPendientes(t.tickets.filter((x) => x.estado === 'abierto' || x.estado === 'en_progreso').length))
         .catch(() => setPendientes(0))
+  }, [loc.pathname, puede])
+
+  // campana del personal de salud: avisos sin leer (se refresca al navegar y al marcar «Entendido»)
+  useEffect(() => {
+    if (!puede('panorama_salud')) return
+    const contar = () =>
+      api
+        .avisos()
+        .then((l) => setSinLeer(l.filter((a) => !a.leido).length))
+        .catch(() => setSinLeer(0))
+    contar()
+    window.addEventListener('sentinel:avisos', contar)
+    return () => window.removeEventListener('sentinel:avisos', contar)
   }, [loc.pathname, puede])
 
   if (!sesion) return null
@@ -91,6 +105,17 @@ export function Shell() {
             <span />
           )}
           <div className="barra__der">
+            {puede('panorama_salud') && (
+              <button
+                className={`campana ${sinLeer ? 'campana--activa' : ''}`}
+                onClick={() => ir('/mi-panorama')}
+                aria-label={sinLeer ? `${sinLeer} avisos de seguridad sin leer` : 'Avisos de seguridad: estás al día'}
+                title="Avisos de seguridad"
+              >
+                <Bell size={19} aria-hidden />
+                {sinLeer > 0 && <span className="campana__n">{sinLeer}</span>}
+              </button>
+            )}
             <div className="pase-mini">
               <button className="pase-mini__boton" onClick={() => setAcceso((v) => !v)} aria-expanded={acceso}>
                 <KeyRound size={16} aria-hidden />

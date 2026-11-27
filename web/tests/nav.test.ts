@@ -15,6 +15,11 @@ describe('navegación por rol', () => {
     expect(new Set(rutas).size).toBe(rutas.length)
     expect(NAV.every((g) => g.items.length > 0)).toBe(true)
   })
+  it('el personal de salud entra a «Mi panorama» y también puede verificar', () => {
+    expect(inicioDe(['panorama_salud', 'verificar'])).toBe('/mi-panorama')
+    expect(TODAS.find((i) => i.ruta === '/mi-panorama')?.permiso).toBe('panorama_salud')
+    expect(AREAS.map((a) => a.permiso)).toContain('panorama_salud')
+  })
   it('el panel de CI es solo para TI', () => {
     expect(TODAS.find((i) => i.ruta === '/ci')?.permiso).toBe('ver_ci')
   })

@@ -1,8 +1,9 @@
-import { CalendarClock, ExternalLink, Stethoscope, User } from 'lucide-react'
+import { CalendarClock, ExternalLink, FileImage, Mic, Stethoscope, User, Video } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Denuncia, EstadoDenuncia } from '../api/types'
+import { TextoProtegido } from '../components/TextoProtegido'
 import { Carga, Pagina, Panel } from '../components/ui'
 import { ESTADO_DENUNCIA, fFechaHora, MEDIO } from '../lib/format'
 import { useSesion } from '../lib/sesion'
@@ -97,7 +98,27 @@ function DetalleDenuncia({ d, alGestionar }: { d: Denuncia; alGestionar: (d: Den
       bajada={`Recibida el ${fFechaHora(d.fecha)} desde ${d.origen === 'ciudadano' ? 'el portal Proteger (externo)' : 'Verificar contenido'}.`}
     >
       <h3>{d.tipo_texto}</h3>
-      {d.descripcion ? <blockquote className="cita">{d.descripcion}</blockquote> : <p className="muted">Sin descripción.</p>}
+      {d.contadoCon?.length > 0 && (
+        <p className="contado-con">
+          También lo contó con:{' '}
+          {d.contadoCon.map((c, i) => {
+            const Icono = c === 'Video' ? Video : c === 'Foto' ? FileImage : Mic
+            return (
+              <span key={i} className="pildora">
+                <Icono size={12} aria-hidden /> {c}
+              </span>
+            )
+          })}
+          <span className="muted"> Llega pasado a texto, con los datos personales protegidos.</span>
+        </p>
+      )}
+      {d.descripcion ? (
+        <blockquote className="cita cita--texto">
+          <TextoProtegido texto={d.descripcion} />
+        </blockquote>
+      ) : (
+        <p className="muted">Sin descripción.</p>
+      )}
       <dl className="ficha-datos">
         <div>
           <dt>Cuándo pasó</dt>
@@ -111,11 +132,8 @@ function DetalleDenuncia({ d, alGestionar }: { d: Denuncia; alGestionar: (d: Den
           <dt>Contacto sospechoso</dt>
           <dd className="mono">{d.contacto_sospechoso_mascara || 'No lo indicó'}</dd>
         </div>
-        <div>
-          <dt>Quiere respuesta en</dt>
-          <dd>{d.responder_a || 'No dejó contacto'}</dd>
-        </div>
       </dl>
+
 
       {d.origenesAgendamiento.length > 0 && (
         <div className="aviso aviso--info">
@@ -201,3 +219,4 @@ function DetalleDenuncia({ d, alGestionar }: { d: Denuncia; alGestionar: (d: Den
     </Panel>
   )
 }
+

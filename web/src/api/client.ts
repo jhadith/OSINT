@@ -1,6 +1,9 @@
 // Capa de acceso al backend local. Cada pantalla llama solo a `api.*`.
 import type {
   Agenda,
+  Aviso,
+  AvisoBorrador,
+  PanoramaSalud,
   Analisis,
   Caso,
   CasoResumen,
@@ -181,6 +184,13 @@ export const api = {
   // denuncias
   denunciar: (d: Record<string, unknown>) => post<{ codigo: string; fecha: string }>('/publico/denuncias', d),
   seguimiento: (codigo: string) => get<DenunciaPublica>(`/publico/denuncias/${encodeURIComponent(codigo)}`),
+  /** Sube una nota de voz, un video o una foto: el servidor la pasa a texto con los datos personales protegidos
+   * y devuelve ese texto, para que la persona vea cómo le llega al equipo de seguridad antes de enviar. */
+  subirAdjunto: (archivo: Blob, nombre: string, onAvance: (f: number) => void = () => undefined) => {
+    const fd = new FormData()
+    fd.append('archivo', archivo, nombre)
+    return subir<{ id: string; tipo: string; estado: string; texto: string | null }>('/publico/adjuntos', fd, onAvance)
+  },
   denuncias: () => get<Denuncia[]>('/denuncias'),
   gestionar: (codigo: string, estado: string, respuesta_publica: string, nota_interna: string) =>
     post<Denuncia>(`/denuncias/${encodeURIComponent(codigo)}/gestion`, { estado, respuesta_publica, nota_interna }),
@@ -239,6 +249,13 @@ export const api = {
   },
   reportar: (entrada: string, veredicto: string, comentario: string) =>
     post<{ codigo: string; fecha: string }>('/verificar/reportar', { entrada, veredicto, comentario }),
+
+  // avisos al personal de salud y su panel
+  avisos: () => get<Aviso[]>('/avisos'),
+  avisoSugerido: (caso: string) => get<AvisoBorrador>(`/avisos/sugerido/${encodeURIComponent(caso)}`),
+  crearAviso: (a: AvisoBorrador & { caso?: string }) => post<Aviso>('/avisos', a),
+  avisoLeido: (codigo: string) => post<{ codigo: string; leido: boolean }>(`/avisos/${encodeURIComponent(codigo)}/leido`),
+  panoramaSalud: () => get<PanoramaSalud>('/panorama-salud'),
 
   // auditoría
   bitacora: () => get<EntradaBitacora[]>('/bitacora'),

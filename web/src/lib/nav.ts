@@ -1,11 +1,13 @@
 import {
   Activity,
+  BellRing,
   BookLock,
   CalendarClock,
   FileSearch,
   FolderInput,
   Gauge,
   Grid3x3,
+  HeartPulse,
   type LucideIcon,
   ListChecks,
   Megaphone,
@@ -125,6 +127,7 @@ export const NAV: Grupo[] = [
     nivel: 'Protección',
     para: 'para el personal',
     items: [
+      { ruta: '/mi-panorama', nombre: 'Mi panorama', icono: HeartPulse, permiso: 'panorama_salud', ayuda: 'Avisos y lo que pasa en el mes' },
       { ruta: '/verificar', nombre: 'Verificar contenido', icono: FileSearch, permiso: 'verificar', ayuda: 'Enlaces e imágenes' },
     ],
   },
@@ -153,6 +156,7 @@ export const AREAS: { permiso: Permiso; nombre: string; icono: LucideIcon }[] = 
   { permiso: 'reidentificar', nombre: 'Ver nombres reales', icono: ShieldCheck },
   { permiso: 'cargar_datos', nombre: 'Cargar datos', icono: FolderInput },
   { permiso: 'ver_denuncias', nombre: 'Denuncias', icono: Megaphone },
+  { permiso: 'panorama_salud', nombre: 'Avisos y panorama del mes', icono: BellRing },
   { permiso: 'verificar', nombre: 'Verificar contenido', icono: FileSearch },
   { permiso: 'auditar', nombre: 'Bitácora', icono: BookLock },
 ]

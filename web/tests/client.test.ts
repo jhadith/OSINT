@@ -184,6 +184,22 @@ describe('rutas de la API', () => {
     }
   })
 
+  it('cubre los avisos al personal y su panel', async () => {
+    const { api } = await cliente()
+    const casos: [() => Promise<unknown>, string, string][] = [
+      [() => api.avisos(), '/api/avisos', 'GET'],
+      [() => api.avisoSugerido('C3'), '/api/avisos/sugerido/C3', 'GET'],
+      [() => api.crearAviso({ titulo: 'Aviso', texto: 'Texto del aviso', consejo: '', nivel: 'medio', caso: 'C3' }), '/api/avisos', 'POST'],
+      [() => api.avisoLeido('AV-ABC123'), '/api/avisos/AV-ABC123/leido', 'POST'],
+      [() => api.panoramaSalud(), '/api/panorama-salud', 'GET'],
+    ]
+    for (const [llamar, ruta, metodo] of casos) {
+      await llamar()
+      expect(ultimaLlamada()[0]).toBe(ruta)
+      expect(ultimaLlamada()[1].method ?? 'GET').toBe(metodo)
+    }
+  })
+
   it('descarga los exportes como archivo', async () => {
     vi.useFakeTimers()
     const crear = vi.fn(() => 'blob:prueba')
@@ -247,6 +263,22 @@ describe('subida de archivos con progreso', () => {
     x.responseText = JSON.stringify({ id: 'AN-1' })
     x.onload?.()
     await expect(promesa).resolves.toEqual({ id: 'AN-1' })
+  })
+
+  it('sube la nota de voz de una denuncia y devuelve su texto protegido', async () => {
+    const c = await cliente()
+    const avance = vi.fn()
+    const promesa = c.api.subirAdjunto(new Blob(['voz'], { type: 'audio/webm' }), 'nota-de-voz.webm', avance)
+    const x = XHRFalso.ultimo
+    expect(x.open).toHaveBeenCalledWith('POST', '/api/publico/adjuntos')
+    const fd = x.send.mock.calls[0][0] as FormData
+    expect((fd.get('archivo') as File).name).toBe('nota-de-voz.webm')
+    x.upload.onprogress?.({ lengthComputable: true, loaded: 1, total: 4 })
+    expect(avance).toHaveBeenCalledWith(0.25)
+    x.status = 200
+    x.responseText = JSON.stringify({ id: 'adj-0123456789abcdef', tipo: 'audio', estado: 'procesado', texto: 'soy [Nombre protegido]' })
+    x.onload?.()
+    await expect(promesa).resolves.toMatchObject({ id: 'adj-0123456789abcdef', texto: 'soy [Nombre protegido]' })
   })
 
   it('rechaza si el servidor responde con error', async () => {

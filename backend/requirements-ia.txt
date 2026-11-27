@@ -1,0 +1,8 @@
+# Lectura local OPCIONAL para el canal de denuncias (todo corre en este equipo, sin enviar nada a internet):
+#   - rapidocr: lee el texto de las fotos y capturas (modelos incluidos en el paquete).
+#   - faster-whisper: pasa a texto las notas de voz y los videos. La primera vez baja el modelo; después funciona
+#     sin internet. Elige el tamaño con SENTINEL_WHISPER_MODEL (tiny, base, small). Por defecto: small.
+# Instalar:  pip install -r requirements-ia.txt
+# Sin estas librerías la denuncia igual se recibe; el archivo se pasa a texto cuando se instalen.
+rapidocr_onnxruntime==1.2.3
+faster-whisper==1.2.1

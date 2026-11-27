@@ -13,6 +13,8 @@ export type Permiso =
   | 'auditar'
   | 'pedir_reglas'
   | 'gestionar_reglas'
+  | 'panorama_salud'
+  | 'avisar_personal'
 
 export interface Rol {
   rol: string
@@ -332,7 +334,8 @@ export interface Denuncia {
   contacto_sospechoso_mascara: string
   enlace: string
   verificacion: Verificacion | null
-  responder_a: string
+  /** Cómo la contó además de escribir (Nota de voz, Video, Foto): llega ya como texto protegido en la descripción. */
+  contadoCon: string[]
   estado: EstadoDenuncia
   respuesta_publica: string
   nota_interna: string
@@ -340,6 +343,40 @@ export interface Denuncia {
   actualizado?: string
   origenesAgendamiento: string[]
 }
+// ---------- avisos al personal de salud y «Mi panorama» ----------
+export type NivelAviso = 'alto' | 'medio' | 'info'
+export interface Aviso {
+  codigo: string
+  fecha: string
+  nivel: NivelAviso
+  titulo: string
+  texto: string
+  consejo: string
+  origen: 'automatico' | 'manual'
+  leido?: boolean
+  autor?: string
+  caso?: string
+  telegram?: string
+}
+export interface AvisoBorrador {
+  titulo: string
+  texto: string
+  consejo: string
+  nivel: NivelAviso
+}
+export interface PanoramaSalud {
+  hayAnalisis: boolean
+  periodo: { desde: string; hasta: string } | null
+  avisos: Aviso[]
+  amenazas: { id: string; nombre: string; n: number }[]
+  total: number
+  porDia: { dia: string; intentos: number }[]
+  dimensiones: { id: string; nombre: string; pregunta: string; nivel: Gravedad; exposicion: number; explicacion: string }[]
+  sector: { titulo: string; resumen: string; fuente: string; fecha: string }[]
+  misReportes: { codigo: string; fecha: string; que: string; estado: string; respuesta: string }[]
+  consejos: string[]
+}
+
 export interface DenunciaPublica {
   codigo: string
   fecha: string

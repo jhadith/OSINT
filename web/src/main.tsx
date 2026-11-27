@@ -24,6 +24,7 @@ import Tablero from './pages/Tablero'
 import Ingreso from './pages/Ingreso'
 import Inteligencia from './pages/Inteligencia'
 import LineaTiempo from './pages/LineaTiempo'
+import MiPanorama from './pages/MiPanorama'
 import Listas from './pages/Listas'
 import Realimentacion from './pages/Realimentacion'
 import Relaciones from './pages/Relaciones'
@@ -80,6 +81,7 @@ createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/listas" element={<Con p="tecnico"><Listas /></Con>} />
             <Route path="/realimentacion" element={<Con p="tecnico"><Realimentacion /></Con>} />
             <Route path="/ci" element={<Con p="ver_ci"><CI /></Con>} />
+            <Route path="/mi-panorama" element={<Con p="panorama_salud"><MiPanorama /></Con>} />
             <Route path="/verificar" element={<Con p="verificar"><Verificar /></Con>} />
             <Route path="/accesos" element={<Con p="auditar"><Accesos /></Con>} />
           </Route>

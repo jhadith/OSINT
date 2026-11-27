@@ -210,13 +210,15 @@ def test_revision_de_agendamiento_con_citas(cli, analista, sin_citas):
 
 
 # ---------- 5. Denuncias y verificación ----------
-def test_bandeja_oculta_el_contacto_a_quien_no_gestiona(cli, analista, jefe):
+def test_denuncia_anonima_no_guarda_contacto_para_responder(cli, analista, jefe):
+    # El canal es anónimo: aunque un cliente viejo mande «responder_a», no se guarda ni se muestra a nadie.
     r = cli.post("/api/publico/denuncias", json={"tipo": "otro", "responder_a": "persona@example.com",
                                                  "acepta_privacidad": True})
     cod = r.json()["codigo"]
-    vista_jefe = next(d for d in cli.get("/api/denuncias", headers=jefe).json() if d["codigo"] == cod)
-    vista_analista = next(d for d in cli.get("/api/denuncias", headers=analista).json() if d["codigo"] == cod)
-    assert vista_jefe["responder_a"] == "••••" and vista_analista["responder_a"] == "persona@example.com"
+    for quien in (jefe, analista):
+        vista = cli.get("/api/denuncias", headers=quien)
+        d = next(d for d in vista.json() if d["codigo"] == cod)
+        assert "responder_a" not in d and "persona@example.com" not in vista.text
     assert cli.get("/api/publico/denuncias/DN-000000").status_code == 404
 
 

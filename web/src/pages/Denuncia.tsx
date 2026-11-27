@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { DenunciaPublica } from '../api/types'
 import { Marca } from '../components/Marca'
+import { Contar, type Adjunto } from '../components/Contar'
 import { fFechaHora } from '../lib/format'
 
 const TIPOS = [
@@ -33,7 +34,8 @@ export default function Denuncia() {
   const [contacto, setContacto] = useState('')
   const [enlace, setEnlace] = useState('')
   const [descripcion, setDescripcion] = useState('')
-  const [responder, setResponder] = useState('')
+  const [adjuntos, setAdjuntos] = useState<Adjunto[]>([])
+  const subiendo = adjuntos.some((a) => a.estado === 'subiendo')
   const [acepta, setAcepta] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
@@ -45,6 +47,8 @@ export default function Denuncia() {
     setEnviando(true)
     setError('')
     try {
+      // las grabaciones y fotos ya se subieron y se pasaron a texto: la denuncia solo lleva sus ids
+      const ids = adjuntos.flatMap((a) => (a.id ? [a.id] : []))
       const r = await api.denunciar({
         tipo,
         medio,
@@ -52,7 +56,7 @@ export default function Denuncia() {
         contacto_sospechoso: contacto,
         enlace,
         descripcion,
-        responder_a: responder,
+        adjuntos: ids,
         acepta_privacidad: acepta,
       })
       setCodigo(r.codigo)
@@ -152,27 +156,16 @@ export default function Denuncia() {
                   <input value={enlace} onChange={(e) => setEnlace(e.target.value)} maxLength={500} placeholder="Pégalo aquí. No lo abras." />
                 </label>
               )}
-              <label>
-                ¿Qué pasó?
-                <textarea
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  maxLength={1500}
-                  rows={4}
-                  placeholder="Cuéntalo con tus palabras. No escribas tu cédula ni datos médicos."
-                />
-              </label>
-              <label>
-                ¿Quieres que te respondamos? (opcional)
-                <input value={responder} onChange={(e) => setResponder(e.target.value)} maxLength={120} placeholder="Correo o teléfono" />
-              </label>
             </div>
+
+            <Contar descripcion={descripcion} setDescripcion={setDescripcion} adjuntos={adjuntos} setAdjuntos={setAdjuntos} />
 
             <label className="publico__acepto">
               <input type="checkbox" checked={acepta} onChange={(e) => setAcepta(e.target.checked)} />
               <span>
-                Entiendo que esta denuncia la revisa el equipo de seguridad, que no me piden cédula ni nombre, y que el
-                número que reporto se guarda protegido.
+                Entiendo que esta denuncia es anónima y la revisa el equipo de seguridad. No me piden cédula, nombre ni
+                datos de contacto, y el número que reporto y mis grabaciones se guardan protegidos.
+                Sigo mi denuncia con el código que recibo al final.
               </span>
             </label>
             {error && (
@@ -180,8 +173,8 @@ export default function Denuncia() {
                 {error}
               </p>
             )}
-            <button className="boton boton--enorme" disabled={!acepta || enviando} onClick={enviar}>
-              {enviando ? 'Enviando…' : 'Enviar denuncia'}
+            <button className="boton boton--enorme" disabled={!acepta || enviando || subiendo} onClick={enviar}>
+              {enviando ? 'Enviando…' : subiendo ? 'Pasando tus archivos a texto…' : 'Enviar denuncia'}
             </button>
           </section>
         )}
@@ -212,7 +205,8 @@ export default function Denuncia() {
                 setDescripcion('')
                 setMedio('')
                 setCuando('')
-                setResponder('')
+                adjuntos.forEach((a) => URL.revokeObjectURL(a.url))
+                setAdjuntos([])
                 setCopiado(false)
               }}
             >
