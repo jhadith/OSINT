@@ -12,27 +12,15 @@ __pycache__/
 web/node_modules/
 web/dist/
 web/node_modules/.tmp/
+# reportes generados por el pipeline y cobertura local
+web/coverage/
+.coverage
+reportes/
+reporte_sonarqube/
+entregables/
+uvicorn*.log
 # secretos
 .env
 *.env
 
-# reportes locales de seguridad
-reportes/
-.coverage
-coverage.xml
-.ci/
-.zap/*.html
-.zap/*.json
-
-# pruebas dinámicas
-pruebas_dinamicas/e2e/node_modules/
-pruebas_dinamicas/e2e/reporte/
-pruebas_dinamicas/e2e/resultados/
-
-# cobertura
-web/coverage/
-.coverage*
-!.coveragerc
-
-# reportes generados
-reporte_sonarqube/
+.venv-win/

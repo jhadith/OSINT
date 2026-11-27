@@ -1,0 +1,17 @@
+{
+  "count": 1,
+  "results": [
+    {
+      "id": "6a11ced01",
+      "name": "Campaña ransomware contra hospitales",
+      "description": "Pulso con indicadores de C2 asociados a campañas de ransomware dirigidas al sector salud.",
+      "created": "2026-11-26T08:30:00.000000",
+      "tags": ["ransomware", "salud", "latinamerica"],
+      "references": ["https://otx.example.com/referencia"],
+      "indicators": [
+        {"type": "domain", "value": "malicious.example"},
+        {"type": "ipv4", "value": "203.0.113.10"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+# nada de datos, estado, secretos ni dependencias locales dentro de la imagen
+.git
+.github
+.venv
+.venv-win
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+web/dist
+backend/estado
+**/salidas
+**/restringido
+datos
+.env
+*.env
+*.zip
+odd
+.atl

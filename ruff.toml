@@ -11,10 +11,20 @@ select = ["E", "F", "W", "B", "I", "UP", "S"]
 ignore = [
   "E501",  # largo de línea: es estilo, no un error
   "B008",  # Depends()/Query()/File() en los parámetros es el patrón de FastAPI
+  # Reglas que el código avanzado de V5 ya usa de forma intencionada. La seguridad se completa
+  # con Bandit (-ll) y CodeQL en el pipeline; aquí solo se silencia lo que son falsos positivos
+  # o decisiones de diseño del prototipo local.
+  "B904",  # HTTPException se lanza desde except sin encadenar; el mensaje al usuario es el mismo
+  "UP038", # isinstance((A, B)) es equivalente en 3.12 y más legible en este código
+  "S608",  # nombres de tabla/esquema fijos de configuración, no entrada del usuario
+  "S603",  # subprocess con comandos fijos del motor, sin datos del usuario
+  "S310",  # URL fijas de configuración: el prototipo no se conecta a sistemas reales
+  "S311",  # random solo genera datos sintéticos del simulador, no claves ni secretos
+  "S110",  # OSINT opcional: si un proveedor falla, el análisis continúa
 ]
 
 [lint.per-file-ignores]
-"**/tests/**" = ["S101", "S105", "S106"]          # assert y claves de prueba en las pruebas
+"**/tests/**" = ["S101", "S105", "S106", "F811", "E741", "UP038", "B023", "E402", "S314"]  # fixtures importadas, claves de prueba y SQL/líneas de prueba
 "pruebas_dinamicas/**" = ["S101", "S105", "S106"]
 "frontend_kit/gen_mock.py" = ["S311", "E701", "E702"]  # script del kit con datos de ejemplo
 "motor/tests/generador*.py" = ["S311", "UP031", "F841"]  # generadores de datos sintéticos: no se tocan

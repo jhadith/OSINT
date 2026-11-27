@@ -1,11 +1,15 @@
 """Canal de denuncias para afiliados y jubilados, y reportes del personal de salud.
 
-Mínimo necesario (LOPDP): no se pide cédula ni nombre. El contacto sospechoso que la persona reporta se guarda solo
-como seudónimo (para cruzarlo con el módulo de agendamiento, patrón HG-07) y en forma enmascarada para el SOC.
+Mínimo necesario (LOPDP): no se pide cédula ni nombre. El texto libre se guarda enmascarado: cédula
+ecuatoriana, correos y teléfonos salen como *** conservando solo la estructura mínima (patrón de
+comun/pii.py de la fuente, adaptado). El contacto sospechoso que la persona reporta se guarda solo
+como seudónimo (para cruzarlo con el módulo de agendamiento, patrón HG-07) y en forma enmascarada
+para el SOC: el seudónimo se calcula SIEMPRE sobre el valor crudo, antes de cualquier máscara.
 El contacto para responder es opcional y solo lo ve quien gestiona denuncias.
 """
 from __future__ import annotations
 
+import re
 import secrets
 import threading
 import time
@@ -47,13 +51,39 @@ def _enmascarar(texto: str) -> str:
     return ("•" * max(0, len(t) - 4)) + t[-4:] if len(t) > 4 else "••••"
 
 
+# --- PII en el texto libre (LOPDP): patrones de comun/pii.py de la fuente, adaptados a Sentinel ---
+# Cédula ecuatoriana: provincia 01-24 o 30, tercer dígito 0-5 y 10 dígitos (los 9 base más el
+# dígito verificador). Los celulares (09 + 8 dígitos) no entran aquí porque se resuelven antes.
+PATRON_CEDULA = re.compile(r"(?<!\d)(?:0[1-9]|1\d|2[0-4]|30)[0-5]\d{7}(?!\d)")
+PATRON_EMAIL = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+")
+PATRON_CELULAR = re.compile(r"(?<!\d)09\d{8}(?!\d)")          # celular 09xx
+PATRON_FIJO = re.compile(r"(?<!\d)07\d{7}(?!\d)")              # fijo 07xx
+PATRON_INTL = re.compile(r"(?<!\d)\+?593\d{9}(?!\d)")           # +593...
+
+
+def _enmascarar_pii(texto: str) -> str:
+    """Cédula, correo y teléfono -> *** conservando solo la estructura mínima (lo demás se conserva).
+
+    El correo conserva su dominio (dato no personal, útil al SOC), el teléfono su prefijo y la
+    cédula su provincia. El orden importa: el correo va primero para que sus dígitos no se
+    confundan con una cédula, y los teléfonos antes que la cédula para que un 09xx no se lea
+    como provincia 09.
+    """
+    t = PATRON_EMAIL.sub(lambda m: "***@" + m.group(0).rpartition("@")[2], texto)
+    t = PATRON_INTL.sub(lambda m: m.group(0)[:4] + "***", t)
+    t = PATRON_CELULAR.sub(lambda m: m.group(0)[:4] + "***", t)
+    t = PATRON_FIJO.sub(lambda m: m.group(0)[:4] + "***", t)
+    t = PATRON_CEDULA.sub(lambda m: m.group(0)[:2] + "***", t)
+    return t
+
+
 def crear(datos: dict, origen: str = "ciudadano") -> dict:
     codigo = "DN-" + secrets.token_hex(3).upper()
     sospechoso = (datos.get("contacto_sospechoso") or "").strip()
     enlace = (datos.get("enlace") or "").strip()
     reg = {
         "codigo": codigo, "fecha": estado.ahora(), "origen": origen, "tipo": datos["tipo"],
-        "tipo_texto": TIPOS[datos["tipo"]], "descripcion": (datos.get("descripcion") or "").strip(),
+        "tipo_texto": TIPOS[datos["tipo"]], "descripcion": _enmascarar_pii((datos.get("descripcion") or "").strip()),
         "cuando": datos.get("cuando") or "", "medio": datos.get("medio") or "",
         "contacto_sospechoso_ref": _ref_contacto(sospechoso) if sospechoso else "",
         "contacto_sospechoso_mascara": _enmascarar(sospechoso) if sospechoso else "",

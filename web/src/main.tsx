@@ -20,13 +20,16 @@ import Casos from './pages/Casos'
 import CI from './pages/CI'
 import Denuncia from './pages/Denuncia'
 import Denuncias from './pages/Denuncias'
-import Ejecutiva from './pages/Ejecutiva'
+import Tablero from './pages/Tablero'
 import Ingreso from './pages/Ingreso'
 import Inteligencia from './pages/Inteligencia'
 import LineaTiempo from './pages/LineaTiempo'
+import Listas from './pages/Listas'
+import Realimentacion from './pages/Realimentacion'
 import Relaciones from './pages/Relaciones'
 import Riesgos from './pages/Riesgos'
 import Tendencias from './pages/Tendencias'
+import Tickets from './pages/Tickets'
 import Verificar from './pages/Verificar'
 
 function Protegida() {
@@ -38,9 +41,9 @@ function Protegida() {
 }
 
 /** La pantalla se muestra solo si el rol tiene el permiso; el servidor vuelve a comprobarlo en cada llamada. */
-function Con({ p, children }: { p: Permiso; children: ReactNode }) {
+function Con({ p, o, children }: { p: Permiso; o?: Permiso; children: ReactNode }) {
   const { puede } = useSesion()
-  return puede(p) ? <>{children}</> : <SinPermiso permiso={p} />
+  return puede(p) || (o && puede(o)) ? <>{children}</> : <SinPermiso permiso={p} />
 }
 
 function Raiz() {
@@ -54,10 +57,13 @@ createRoot(document.getElementById('root') as HTMLElement).render(
     <ProveedorSesion>
       <BrowserRouter>
         <Routes>
+          {/* Externas a la consola SOC: sin login. /denuncia es el portal público de Proteger,
+              que alimenta al SOC pero no es una pantalla suya. */}
           <Route path="/ingresar" element={<Ingreso />} />
           <Route path="/denuncia" element={<Denuncia />} />
+          {/* Consola SOC: interna, con login; cada pantalla exige el permiso del rol. */}
           <Route element={<Protegida />}>
-            <Route path="/inicio" element={<Con p="estrategico"><Ejecutiva /></Con>} />
+            <Route path="/inicio" element={<Con p="estrategico"><Tablero /></Con>} />
             <Route path="/riesgos" element={<Con p="estrategico"><Riesgos /></Con>} />
             <Route path="/tendencias" element={<Con p="estrategico"><Tendencias /></Con>} />
             <Route path="/casos" element={<Con p="operativo"><Casos /></Con>} />
@@ -66,9 +72,13 @@ createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/denuncias" element={<Con p="ver_denuncias"><Denuncias /></Con>} />
             <Route path="/linea" element={<Con p="operativo"><LineaTiempo /></Con>} />
             <Route path="/anomalias" element={<Con p="operativo"><Anomalias /></Con>} />
-            <Route path="/relaciones" element={<Con p="operativo"><Relaciones /></Con>} />
+            <Route path="/correlaciones" element={<Con p="operativo"><Relaciones /></Con>} />
+            <Route path="/relaciones" element={<Navigate to="/correlaciones" replace />} />
+            <Route path="/tickets" element={<Con p="pedir_reglas" o="gestionar_reglas"><Tickets /></Con>} />
             <Route path="/cargar" element={<Con p="cargar_datos"><Cargar /></Con>} />
             <Route path="/inteligencia" element={<Con p="tecnico"><Inteligencia /></Con>} />
+            <Route path="/listas" element={<Con p="tecnico"><Listas /></Con>} />
+            <Route path="/realimentacion" element={<Con p="tecnico"><Realimentacion /></Con>} />
             <Route path="/ci" element={<Con p="ver_ci"><CI /></Con>} />
             <Route path="/verificar" element={<Con p="verificar"><Verificar /></Con>} />
             <Route path="/accesos" element={<Con p="auditar"><Accesos /></Con>} />

@@ -1,0 +1,6 @@
+# Umbrales de la correlación firewall × sistema médico (S3/S12).
+# En los datos reales las columnas IP de las dos fuentes no son comparables por igualdad,
+# así que el cruce es por ventana temporal con tolerancia de reloj.
+
+CORRELACION_TOLERANCIA_SEG: 600  # ±10 min entre firewall y sistema médico
+DESFASES_HORAS: [0, -12, 12]     # relojes de las fuentes desfasados hasta 12 h (caso 4)

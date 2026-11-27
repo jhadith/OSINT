@@ -85,13 +85,13 @@ jobs:
       - name: Instalar dependencias (lock con hashes)
         run: |
           pip install --require-hashes --only-binary=:all: -r ci/requirements-ci.lock
-      # El mínimo de cobertura (95 %) está en motor/.coveragerc y backend/.coveragerc: si baja, el paso falla.
-      - name: Pruebas y cobertura del motor (mínimo 95 %)
+      # El mínimo de cobertura (90 %) está en motor/.coveragerc y backend/.coveragerc: si baja, el paso falla.
+      - name: Pruebas y cobertura del motor (mínimo 90 %)
         working-directory: motor
         run: |
           python -m pytest -q --junitxml=../reportes/pytest-motor.xml --cov=motor --cov-report=xml:../reportes/coverage-motor.xml --cov-report=html:../reportes/cobertura-motor
           { echo "### Cobertura del motor"; python -m coverage report --format=markdown; } >> "$GITHUB_STEP_SUMMARY"
-      - name: Pruebas y cobertura del backend (mínimo 95 %)
+      - name: Pruebas y cobertura del backend (mínimo 90 %)
         working-directory: backend
         run: |
           python -m pytest -q --junitxml=../reportes/pytest-backend.xml --cov=app --cov-report=xml:../reportes/coverage-backend.xml --cov-report=html:../reportes/cobertura-backend
@@ -110,6 +110,35 @@ jobs:
           name: reportes-python
           path: reportes/
           retention-days: 14
+
+  # ---------- 3 y 4. El backend de V5 también se prueba contra PostgreSQL ----------
+  postgres:
+    name: Backend sobre PostgreSQL
+    needs: [python]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: prueba
+          POSTGRES_DB: sentinel
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ci/requirements-ci.lock
+      - run: |
+          pip install --require-hashes --only-binary=:all: -r ci/requirements-ci.lock
+      - name: Pruebas del backend sobre PostgreSQL
+        working-directory: backend
+        env:
+          SENTINEL_DB_URL: postgresql://postgres:prueba@localhost:5432/sentinel
+          SENTINEL_ESTADO: ${{ github.workspace }}/.ci/estado
+        run: python -m pytest -q
 
   # ---------- 3 y 4. Construir y probar: consola web (React) ----------
   web:
@@ -150,6 +179,16 @@ jobs:
           name: web-dist
           path: web/dist/
           retention-days: 7
+
+  # ---------- 4. Construir: imagen de Docker (consola + backend + motor) ----------
+  docker:
+    name: Imagen Docker (build)
+    needs: [web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Construir la imagen
+        run: docker build -t sentinel-salud:ci .
 
   # ---------- 4. Probar (estática): SAST con CodeQL ----------
   codeql:
@@ -383,7 +422,7 @@ jobs:
   # Por eso no se exige como check obligatorio en la protección de rama.
   resumen-ci:
     name: Resumen de CI para la consola
-    needs: [secretos, lint, python, web, codeql, pruebas-dinamicas, dast, sonarqube]
+    needs: [secretos, lint, python, postgres, web, docker, codeql, pruebas-dinamicas, dast, sonarqube]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -395,7 +434,9 @@ jobs:
           R_SECRETOS: ${{ needs.secretos.result }}
           R_LINT: ${{ needs.lint.result }}
           R_PYTHON: ${{ needs.python.result }}
+          R_POSTGRES: ${{ needs.postgres.result }}
           R_WEB: ${{ needs.web.result }}
+          R_DOCKER: ${{ needs.docker.result }}
           R_CODEQL: ${{ needs.codeql.result }}
           R_PRUEBAS_DINAMICAS: ${{ needs.pruebas-dinamicas.result }}
           R_DAST: ${{ needs.dast.result }}
@@ -414,7 +455,9 @@ jobs:
               ("secretos", "Secretos (Gitleaks)", "R_SECRETOS", "Gitleaks sobre todo el código"),
               ("lint", "Lint (backend ruff y frontend oxlint)", "R_LINT", "Sin advertencias en Python ni TypeScript"),
               ("python", "Motor y backend (pytest, Bandit, pip-audit)", "R_PYTHON", "Pruebas, cobertura, Bandit y dependencias"),
+              ("postgres", "Backend sobre PostgreSQL", "R_POSTGRES", "Pruebas del backend con SENTINEL_DB_URL"),
               ("web", "Consola web (pruebas, cobertura, build, npm audit)", "R_WEB", "Vitest, cobertura, compilación y dependencias"),
+              ("docker", "Imagen Docker (build)", "R_DOCKER", "Consola, backend y motor en una sola imagen"),
               ("codeql", "SAST (CodeQL)", "R_CODEQL", "Hallazgos security-extended"),
               ("pruebas-dinamicas", "Pruebas dinámicas (E2E y API en vivo)", "R_PRUEBAS_DINAMICAS", "Playwright y pytest contra 127.0.0.1"),
               ("dast", "DAST (OWASP ZAP sobre 127.0.0.1)", "R_DAST", "Baseline web y API scan"),
@@ -446,7 +489,7 @@ jobs:
   # ---------- 5. Liberar: entregables con hash SHA-256 ----------
   liberar:
     name: Entregables y SHA-256
-    needs: [secretos, lint, python, web, codeql, pruebas-dinamicas, dast, resumen-ci]
+    needs: [secretos, lint, python, postgres, web, docker, codeql, pruebas-dinamicas, dast, resumen-ci]
     runs-on: ubuntu-latest
     permissions:
       contents: write

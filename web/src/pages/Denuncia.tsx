@@ -76,6 +76,10 @@ export default function Denuncia() {
           Pedir una cita médica es gratis. Nadie del personal de salud te pedirá dinero, tu contraseña ni códigos que te
           lleguen por mensaje.
         </div>
+        <p className="publico__bajada">
+          Este canal es externo a la consola SOC: no pide inicio de sesión y tu denuncia se envía al equipo de seguridad,
+          que la gestiona de forma interna.
+        </p>
 
         {paso === 1 && (
           <section aria-labelledby="t1">

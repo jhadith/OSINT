@@ -1,0 +1,20 @@
+# Umbrales de las reglas del firewall (S3/S12: se calibran aquí, nunca en el código Python).
+# Calibrados con el análisis de octubre de 2026: el tráfico normal llega desde IPs casi únicas
+# (máximo 7 eventos por IP en el mes).
+
+SERVIDOR: "10.10.100.30"          # servidor del sistema médico que protegen las reglas
+SEGMENTO_SERVIDOR: "10.10.100."   # red del servidor: los atacantes del informe estaban dentro
+RAFAGA_IP_SEG: 300                # ventana de la ráfaga de intentos (segundos)
+RAFAGA_IP_MIN: 100                # >= 100 intentos en 5 min desde una IP → escaneo/fuerza bruta
+RAFAGA_SSH_SEG: 5                 # ventana de la ráfaga SSH (segundos)
+RAFAGA_SSH_MIN: 20                # >= 20 SSH permitidos en 5 s desde una IP
+SSH_PCT_RAFAGA: 0.8               # ...si >= 80 % de la ráfaga es SSH permitido
+ESCANEO_PUERTOS_MIN: 3            # >= 3 puertos distintos en una ráfaga → escaneo
+FUERZA_BRUTA_PCT_NEGADO: 0.8      # >= 80 % de intentos negados contra 1-2 puertos → fuerza bruta
+PUERTOS_SSH: [22]
+PUERTOS_INSEGUROS:                # servicios sin cifrar que el informe pide bloquear
+  23: Telnet
+  445: SMBv1
+  137: NetBIOS
+  138: NetBIOS
+  139: NetBIOS

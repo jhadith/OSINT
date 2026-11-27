@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>CERT Atom Feed</title>
+  <link href="https://cert.example.com/"/>
+  <updated>2026-11-26T12:00:00Z</updated>
+  <entry>
+    <title>Aviso Atom: vulnerabilidad en componente de imagen</title>
+    <link href="https://cert.example.com/avisos/atom-1"/>
+    <id>https://cert.example.com/avisos/atom-1</id>
+    <published>2026-11-26T09:00:00Z</published>
+    <summary>Vulnerabilidad en una librería de procesamiento de imágenes usada en sistemas clínicos.</summary>
+  </entry>
+  <entry>
+    <title>Aviso Atom: actualización de emergencia</title>
+    <link href="https://cert.example.com/avisos/atom-2"/>
+    <id>https://cert.example.com/avisos/atom-2</id>
+    <published>2026-11-25T09:00:00Z</published>
+    <summary>Actualización de emergencia para un servidor de correo corporativo.</summary>
+  </entry>
+</feed>

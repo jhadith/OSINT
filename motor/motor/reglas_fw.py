@@ -29,7 +29,7 @@ def rafagas_ip(fw: pd.DataFrame) -> list[Hallazgo]:
     for ep in por_entidad(srv, "iph", config.RAFAGA_IP_SEG, config.RAFAGA_IP_MIN):
         puertos = ep.loc[ep["p"] >= 0, "p"].nunique()
         pct_neg = ep["neg"].mean()
-        if (ep["ssh"] & ~ep["neg"]).mean() >= 0.8:
+        if (ep["ssh"] & ~ep["neg"]).mean() >= config.SSH_PCT_RAFAGA:
             h = _base(ep, "rafaga_ssh")
             h.tecnica("T1021.004", "T1048")
         elif puertos >= config.ESCANEO_PUERTOS_MIN:

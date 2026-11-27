@@ -189,7 +189,7 @@ def lanzar(i: str, autor: str, fw: Path, med: Path, citas: Path | None, reportes
     if citas:
         cmd += ["--citas", str(citas)]
     entorno = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1"}
-    proc = subprocess.Popen(cmd, cwd=str(config.MOTOR), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,  # nosec B603  # noqa: S603 (lista fija, sin shell)
+    proc = subprocess.Popen(cmd, cwd=str(config.MOTOR), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,  # nosec B603
                             text=True, encoding="utf-8", errors="replace", bufsize=1, env=entorno)
     with _lock:
         _en_curso[i] = proc

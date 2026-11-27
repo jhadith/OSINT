@@ -17,7 +17,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
-from . import analisis, ci, config, datos, denuncias, ejecutivo, estado, riesgos, seguridad, telegram, verificar
+from . import (
+    analisis,
+    bd,
+    ci,
+    config,
+    datos,
+    denuncias,
+    ejecutivo,
+    estado,
+    exportes_apps,
+    impacto,
+    informe_pdf,
+    listas,
+    osint,
+    realimentacion,
+    reportes,
+    riesgos,
+    seguridad,
+    telegram,
+    tickets,
+    verificar,
+)
 from .seguridad import ROLES, Sesion, requiere
 
 app = FastAPI(title="Sentinel Salud API", version="2.0.0")
@@ -108,7 +129,7 @@ def analisis_uno(i: str, s: Sesion = Depends(requiere("estrategico"))):
     try:
         return analisis.obtener(i)
     except KeyError:
-        raise HTTPException(404, "No existe ese análisis.") from None
+        raise HTTPException(404, "No existe ese análisis.")
 
 
 def _reportes() -> list[str]:
@@ -125,7 +146,7 @@ def analisis_carpeta(fw_origen: str = Form(...), fw: str = Form(...), med_origen
         i = analisis.nuevo(s.nombre)
         meta = analisis.lanzar(i, s.nombre, rutas[0], rutas[1], rutas[2], _reportes(), _al_terminar)
     except (ValueError, RuntimeError) as e:
-        raise HTTPException(400, str(e)) from e
+        raise HTTPException(400, str(e))
     estado.bitacora(s.nombre, _rol(s), "Análisis iniciado", i, f"{analisis.mostrar(fw)} y {analisis.mostrar(med)}" +
                     (f" con {analisis.mostrar(citas)}" if citas else ""))
     return meta
@@ -143,10 +164,10 @@ def analisis_subir(firewall: UploadFile = File(...), sistema_medico: UploadFile 
     try:
         fw = analisis.guardar_subida(i, "firewall", firewall.file)
         med = analisis.guardar_subida(i, "sistema_medico", sistema_medico.file)
-        ci = analisis.guardar_subida(i, "agendamiento", agendamiento.file) if agendamiento else None
-        meta = analisis.lanzar(i, s.nombre, fw, med, ci, _reportes(), _al_terminar)
+        citas = analisis.guardar_subida(i, "agendamiento", agendamiento.file) if agendamiento else None
+        meta = analisis.lanzar(i, s.nombre, fw, med, citas, _reportes(), _al_terminar)
     except (ValueError, RuntimeError) as e:
-        raise HTTPException(400, str(e)) from e
+        raise HTTPException(400, str(e))
     nombres = [analisis.mostrar(f.filename or "") if f else None for f in (firewall, sistema_medico, agendamiento)]
     meta["archivos"] = dict(zip(("firewall", "sistema_medico", "agendamiento"), nombres, strict=False))
     estado.bitacora(s.nombre, _rol(s), "Análisis iniciado", i, f"Archivos subidos: {nombres[0]} y {nombres[1]}")
@@ -158,9 +179,9 @@ def analisis_activar(i: str, s: Sesion = Depends(requiere("cargar_datos"))):
     try:
         analisis.activar(i)
     except KeyError:
-        raise HTTPException(404, "No existe ese análisis.") from None
+        raise HTTPException(404, "No existe ese análisis.")
     except ValueError as e:
-        raise HTTPException(400, str(e)) from e
+        raise HTTPException(400, str(e))
     estado.bitacora(s.nombre, _rol(s), "Análisis activado", i, "La consola muestra este análisis")
     return {"ok": True}
 
@@ -169,6 +190,14 @@ def analisis_activar(i: str, s: Sesion = Depends(requiere("cargar_datos"))):
 @app.get("/api/ejecutivo")
 def vista_ejecutiva(s: Sesion = Depends(requiere("estrategico"))):
     return ejecutivo.armar()
+
+
+@app.get("/api/tablero")
+def tablero(s: Sesion = Depends(requiere("estrategico"))):
+    """Las cinco pestañas del tablero: resumen, amenazas internas, citas y fraude, externas e impacto en el negocio."""
+    t = impacto.tablero()
+    t["baseDatos"] = dict(bd.ULTIMO_MOTOR)
+    return t
 
 
 @app.get("/api/resumen")
@@ -187,7 +216,30 @@ def matriz(s: Sesion = Depends(requiere("estrategico"))):
 
 @app.get("/api/threatpulse")
 def tendencias(s: Sesion = Depends(requiere("estrategico"))):
-    return _fijo("tendencias")
+    from . import threatpulse  # cambio confinado a este endpoint (S6c/T7)
+    d = _fijo("tendencias")
+    try:
+        reales, meta = osint.tendencias_reales()                # solo lee la caché: jamás hace red
+    except Exception:                                           # caché ilegible → el feed fijo manda
+        reales, meta = [], None
+    if not reales:                                              # sin datos reales: respuesta idéntica a hoy
+        return {**d, "tendencias": threatpulse.evaluar(d["tendencias"])}
+    fijas = [{**t, "sello": "simulado"} for t in d["tendencias"]]
+    nota = (d["nota"] + f" Se integraron {meta['items']} lecturas reales de {meta['fuentes']} "
+            "fuentes públicas con sello «real»; el resto sigue siendo hipótesis.")
+    return {**d, "nota": nota, "tendencias": threatpulse.evaluar(fijas + reales), "osint": meta}
+
+
+@app.post("/api/threatpulse/actualizar")
+def threatpulse_actualizar(s: Sesion = Depends(requiere("tecnico"))):
+    # Sincronización manual (S13): nada corre en import/startup y cada fuente falla aislada.
+    try:
+        r = osint.sincronizar()
+    except Exception:
+        raise HTTPException(500, "No se pudo actualizar desde las fuentes públicas. Inténtalo más tarde.")
+    estado.bitacora(s.nombre, _rol(s), "OSINT actualizado", "THREATPULSE",
+                    f"{r['actualizadas']} fuentes al día, {r['fallidas']} fallidas de {r['totales']}")
+    return r
 
 
 # ---------- operativo ----------
@@ -342,6 +394,76 @@ def inteligencia(s: Sesion = Depends(requiere("tecnico"))):
     return datos.consola("inteligencia")
 
 
+# ---------- exportes de difusión (S10/T12) ----------
+TABLAS_POWERBI_ESTADO = {
+    "riesgos.csv": ["id", "nombre", "probabilidad", "impacto", "nivel", "tratamiento", "evidencia", "casos"],
+    "controles.csv": ["id", "nombre", "hallazgo", "estado"],
+    "decisiones.csv": ["casoId", "estado", "motivo", "analista", "fecha"],
+}
+
+
+def _csv_tabla(columnas: list[str], filas: list[dict]) -> str:
+    b = io.StringIO()
+    w = csv.DictWriter(b, fieldnames=columnas, extrasaction="ignore", lineterminator="\n")
+    w.writeheader()
+    for f in filas:
+        w.writerow({c: "" if f.get(c) is None else
+                    ("; ".join(str(x) for x in f[c]) if isinstance(f.get(c), list) else f[c]) for c in columnas})
+    return b.getvalue()
+
+
+@app.get("/api/exportes/powerbi")
+def exportar_powerbi(s: Sesion = Depends(requiere("tecnico"))):
+    # datos._salidas resuelve el análisis activo o responde 409, igual que el resto de la consola.
+    d = datos._salidas() / "powerbi"
+    if not d.is_dir():
+        raise HTTPException(409, "El análisis activo no tiene esta información.")
+    tablas = {f.name: f.read_text(encoding="utf-8") for f in sorted(d.glob("*.csv"))}
+    tablas["riesgos.csv"] = _csv_tabla(TABLAS_POWERBI_ESTADO["riesgos.csv"], riesgos.calcular())
+    tablas["controles.csv"] = _csv_tabla(TABLAS_POWERBI_ESTADO["controles.csv"], _fijo("controles"))
+    tablas["decisiones.csv"] = _csv_tabla(TABLAS_POWERBI_ESTADO["decisiones.csv"], estado.leer("decisiones"))
+    libro = exportes_apps.powerbi_xlsx(tablas)
+    estado.bitacora(s.nombre, _rol(s), "Exporte descargado", "POWERBI", "Libro de Excel para Power BI")
+    return Response(libro, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": 'attachment; filename="sentinel_powerbi.xlsx"'})
+
+
+@app.get("/api/exportes/maltego")
+def exportar_maltego(s: Sesion = Depends(requiere("tecnico"))):
+    grafo = datos.consola("grafo")
+    estado.bitacora(s.nombre, _rol(s), "Exporte descargado", "MALTEGO", "Grafo .mtgx")
+    return Response(exportes_apps.maltego_mtgx(grafo), media_type="application/octet-stream",
+                    headers={"Content-Disposition": 'attachment; filename="sentinel_maltego.mtgx"'})
+
+
+# Informes HTML autocontenidos (S14/T16): se registran antes de /api/exportes/{tipo}
+# para que la ruta con parámetro no se los coma, igual que powerbi/maltego.
+@app.get("/api/exportes/gerencial")
+def exportar_gerencial(s: Sesion = Depends(requiere("estrategico"))):
+    pdf = informe_pdf.generar_gerencial()
+    estado.bitacora(s.nombre, _rol(s), "Exporte descargado", "GERENCIAL", "Informe gerencial PDF")
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="informe_gerencial.pdf"'})
+
+
+@app.get("/api/exportes/presentacion")
+def exportar_presentacion(s: Sesion = Depends(requiere("tecnico"))):
+    html = reportes.informe_presentacion(reportes.datos_desde_estado())
+    estado.bitacora(s.nombre, _rol(s), "Exporte descargado", "PRESENTACION", "Informe de presentación HTML")
+    return Response(html, media_type="text/html",
+                    headers={"Content-Disposition": 'attachment; filename="presentacion_soc.html"'})
+
+
+@app.get("/api/exportes/informe-pdf")
+def exportar_informe_pdf(s: Sesion = Depends(requiere("estrategico"))):
+    """Reporte de inteligencia de amenazas con los 8 entregables del reto, en PDF."""
+    pdf = informe_pdf.generar()
+    estado.bitacora(s.nombre, _rol(s), "Exporte descargado", "INFORME PDF", "Reporte de inteligencia (8 entregables)")
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="reporte_inteligencia_sentinel.pdf"'})
+
+
+# Ruta con parámetro al final: registra la de {tipo} después de las concretas (powerbi, maltego).
 @app.get("/api/exportes/{tipo}")
 def exportar(tipo: Literal["stix", "misp", "sigma"], s: Sesion = Depends(requiere("tecnico"))):
     i = datos.consola("inteligencia")
@@ -355,6 +477,139 @@ def exportar(tipo: Literal["stix", "misp", "sigma"], s: Sesion = Depends(requier
                         headers={"Content-Disposition": 'attachment; filename="reglas_sigma.zip"'})
     return Response(i[tipo], media_type="application/json",
                     headers={"Content-Disposition": f'attachment; filename="sentinel_{tipo}.json"'})
+
+
+# ---------- realimentación (S9/T18) ----------
+class Recalibrar(BaseModel):
+    motivo: str = Field(min_length=10, max_length=500)
+
+
+@app.get("/api/realimentacion")
+def realimentacion_metricas(s: Sesion = Depends(requiere("tecnico"))):
+    return realimentacion.resumen()
+
+
+@app.post("/api/realimentacion/recalibrar")
+def realimentacion_recalibrar(r: Recalibrar, s: Sesion = Depends(requiere("tecnico"))):
+    # Nunca corre solo: es la única vía que cambia umbrales y siempre deja la marca en bitácora.
+    return realimentacion.recalibrar(motivo=r.motivo.strip(), actor=s.nombre, rol=_rol(s))
+
+
+# ---------- listas de comparación (S15/T17b) ----------
+# Permisos: seguridad.py no tiene un permiso de gestión de listas para el rol TI; el que TI
+# ya tiene para aplicar indicadores en sus sistemas es «tecnico» (reportado en el handoff).
+# Las altas, bajas, solicitudes y resoluciones las audita el propio repositorio (app.listas).
+class IndicadorLista(BaseModel):
+    tipo: Literal["blanca", "negra"]
+    valor: str = Field(min_length=1, max_length=300)
+    etiqueta: str = Field(default="", max_length=200)
+
+
+class SolicitudLista(BaseModel):
+    tipo: Literal["blanca", "negra"]
+    valor: str = Field(min_length=1, max_length=300)
+    justificacion: str = Field(min_length=1, max_length=1000)
+    fuente: str = Field(default="", max_length=200)
+
+
+class ResolucionLista(BaseModel):
+    aprobar: bool
+    motivo: str = Field(min_length=10, max_length=500)
+
+
+@app.get("/api/listas/indicadores")
+def listas_indicadores(s: Sesion = Depends(requiere("tecnico"))):
+    return listas.listar()
+
+
+@app.post("/api/listas/indicadores")
+def listas_alta_indicador(i: IndicadorLista, s: Sesion = Depends(requiere("tecnico"))):
+    try:
+        return listas.añadir(i.tipo, i.valor, i.etiqueta, quien=s.nombre)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/listas/indicadores/{id}")
+def listas_baja_indicador(id: int = Path(..., ge=1), s: Sesion = Depends(requiere("tecnico"))):
+    try:
+        return listas.quitar(id, quien=s.nombre)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.get("/api/listas/solicitudes")
+def listas_bandeja(estado_solicitud: Literal["PENDIENTE", "APROBADA", "RECHAZADA"] | None =
+                   Query(None, alias="estado"), s: Sesion = Depends(requiere("tecnico"))):
+    return listas.solicitudes(estado_solicitud)
+
+
+@app.post("/api/listas/solicitudes")
+def listas_solicitar(p: SolicitudLista, s: Sesion = Depends(requiere("tecnico"))):
+    try:
+        return listas.solicitar(p.tipo, p.valor, p.justificacion, p.fuente, quien=s.nombre)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/listas/solicitudes/{id}/resolver")
+def listas_resolver(r: ResolucionLista, id: int = Path(..., ge=1),
+                    s: Sesion = Depends(requiere("tecnico"))):
+    try:
+        return listas.resolver(id, r.aprobar, r.motivo, s.nombre)
+    except ValueError as e:
+        codigo = 404 if "desconocida" in str(e) else 400
+        raise HTTPException(codigo, str(e))
+
+
+# ---------- tickets de reglas (SOC → TI) ----------
+class Ticket(BaseModel):
+    tipo: Literal["nueva", "ajustar", "desactivar", "indicador"]
+    regla: str = Field(min_length=2, max_length=120)
+    titulo: str = Field(min_length=5, max_length=140)
+    descripcion: str = Field(min_length=15, max_length=1500)
+    prioridad: Literal["alta", "media", "baja"]
+    caso: str = Field(default="", max_length=20)
+
+
+class GestionTicket(BaseModel):
+    estado: Literal["en_progreso", "aplicado", "rechazado"]
+    respuesta: str = Field(min_length=10, max_length=800)
+
+
+def _puede_tickets(s: Sesion) -> None:
+    if not {"pedir_reglas", "gestionar_reglas"} & set(s.permisos):
+        estado.bitacora(s.nombre, _rol(s), "Acceso denegado", "tickets", "Intentó abrir los tickets de reglas")
+        raise HTTPException(403, "Tu rol no puede ver los tickets de reglas.")
+
+
+@app.get("/api/tickets")
+def tickets_lista(s: Sesion = Depends(seguridad.sesion_actual)):
+    _puede_tickets(s)
+    reglas = []
+    try:
+        reglas = [f"{r['id']} {r['titulo']}" for r in datos.consola("inteligencia").get("sigma", [])]
+    except HTTPException:
+        pass
+    reglas += [f"Archivo rules/{f.name}" for f in sorted((config.PROYECTO / "rules").glob("*.yml"))]
+    return {"tickets": tickets.todos(), "reglas": reglas, "tipos": tickets.TIPOS, "estados": tickets.ESTADOS}
+
+
+@app.post("/api/tickets")
+def tickets_crear(t: Ticket, s: Sesion = Depends(requiere("pedir_reglas"))):
+    return tickets.crear(t.model_dump(), s.nombre, _rol(s))
+
+
+@app.post("/api/tickets/{codigo}/gestion")
+def tickets_gestionar(g: GestionTicket, codigo: str = Path(..., pattern=r"^TK-[0-9A-F]{6}$"),
+                      s: Sesion = Depends(requiere("gestionar_reglas"))):
+    return tickets.gestionar(codigo, g.estado, g.respuesta.strip(), s.nombre, _rol(s))
+
+
+# ---------- estado de CI (solo equipo de TI) ----------
+@app.get("/api/ci/estado")
+def ci_estado(s: Sesion = Depends(requiere("ver_ci"))):
+    return ci.estado()
 
 
 # ---------- personal de salud ----------
@@ -393,12 +648,6 @@ def reportar(r: Reporte, s: Sesion = Depends(requiere("verificar"))):
 @app.get("/api/bitacora")
 def bitacora(s: Sesion = Depends(requiere("auditar"))):
     return list(reversed(estado.leer("bitacora")))
-
-
-# ---------- estado de la integración continua ----------
-@app.get("/api/ci/estado")
-def ci_estado(s: Sesion = Depends(requiere("ver_ci"))):
-    return ci.estado()
 
 
 def _fijo(nombre: str):

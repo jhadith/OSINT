@@ -2,6 +2,7 @@ import { Download } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
+import type { Exporte } from '../api/types'
 import { Carga, Pagina, Panel } from '../components/ui'
 import { useApi } from '../lib/useApi'
 
@@ -9,7 +10,7 @@ export default function Inteligencia() {
   const { st, reintentar } = useApi(api.inteligencia)
   const [regla, setRegla] = useState(0)
   const [error, setError] = useState('')
-  const bajar = (t: 'stix' | 'misp' | 'sigma') => api.exportar(t).catch((e: Error) => setError(e.message))
+  const bajar = (t: Exporte) => api.exportar(t).catch((e: Error) => setError(e.message))
   return (
     <Pagina
       titulo="Reglas e indicadores"
@@ -24,6 +25,15 @@ export default function Inteligencia() {
           </button>
           <button className="boton boton--secundario" onClick={() => bajar('misp')}>
             <Download size={16} aria-hidden /> MISP
+          </button>
+          <button className="boton boton--secundario" onClick={() => bajar('powerbi')}>
+            <Download size={16} aria-hidden /> Power BI (.xlsx)
+          </button>
+          <button className="boton boton--secundario" onClick={() => bajar('maltego')}>
+            <Download size={16} aria-hidden /> Maltego (.mtgx)
+          </button>
+          <button className="boton boton--secundario" onClick={() => bajar('presentacion')}>
+            <Download size={16} aria-hidden /> Presentación para directivos (HTML)
           </button>
         </div>
       }

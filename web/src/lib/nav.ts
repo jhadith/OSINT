@@ -7,12 +7,15 @@ import {
   Gauge,
   Grid3x3,
   type LucideIcon,
+  ListChecks,
   Megaphone,
   Network,
   Radar,
+  RefreshCw,
   ScanSearch,
   ShieldCheck,
   Siren,
+  Ticket,
   Waypoints,
 } from 'lucide-react'
 import type { Permiso } from '../api/types'
@@ -22,6 +25,8 @@ export interface Item {
   nombre: string
   icono: LucideIcon
   permiso: Permiso
+  /** Permiso alternativo: la pantalla se abre con cualquiera de los dos. */
+  tambien?: Permiso
   ayuda: string
 }
 export interface Grupo {
@@ -30,13 +35,15 @@ export interface Grupo {
   items: Item[]
 }
 
-/** Navegación por nivel de inteligencia de amenazas (CTI): de lo estratégico a lo técnico. */
+/** Navegación por nivel de inteligencia de amenazas (CTI): de lo estratégico a lo técnico.
+ * Los grupos primeros son pantallas de la consola SOC (internas, con login); el grupo
+ * «Complementos» reúne módulos externos al SOC que solo alimentan hipótesis. */
 export const NAV: Grupo[] = [
   {
     nivel: 'Estratégico',
     para: 'para decidir',
     items: [
-      { ruta: '/inicio', nombre: 'Vista ejecutiva', icono: Gauge, permiso: 'estrategico', ayuda: 'El mes en una página' },
+      { ruta: '/inicio', nombre: 'Tablero', icono: Gauge, permiso: 'estrategico', ayuda: 'Todo el mes en una pantalla' },
       { ruta: '/riesgos', nombre: 'Matriz de riesgos', icono: Grid3x3, permiso: 'estrategico', ayuda: 'Cambia con cada análisis' },
       { ruta: '/tendencias', nombre: 'Tendencias', icono: Radar, permiso: 'estrategico', ayuda: 'Amenazas del sector salud' },
     ],
@@ -46,8 +53,26 @@ export const NAV: Grupo[] = [
     para: 'para actuar',
     items: [
       { ruta: '/casos', nombre: 'Casos', icono: Siren, permiso: 'operativo', ayuda: 'Incidentes por gravedad' },
-      { ruta: '/agendamiento', nombre: 'Citas del chatbot', icono: CalendarClock, permiso: 'operativo', ayuda: 'Posibles tramitadores' },
-      { ruta: '/denuncias', nombre: 'Denuncias', icono: Megaphone, permiso: 'ver_denuncias', ayuda: 'Lo que reportan afiliados y personal' },
+      {
+        ruta: '/denuncias',
+        nombre: 'Denuncias',
+        icono: Megaphone,
+        permiso: 'ver_denuncias',
+        ayuda: 'Gestión interna de lo que llega del portal Proteger (externo)',
+      },
+    ],
+  },
+  {
+    nivel: 'Complementos',
+    para: 'externos al SOC',
+    items: [
+      {
+        ruta: '/agendamiento',
+        nombre: 'Citas del chatbot (HBVF)',
+        icono: CalendarClock,
+        permiso: 'operativo',
+        ayuda: 'Módulo externo: solo alimenta hipótesis, nada automático',
+      },
     ],
   },
   {
@@ -56,7 +81,7 @@ export const NAV: Grupo[] = [
     items: [
       { ruta: '/linea', nombre: 'Línea de tiempo', icono: Activity, permiso: 'operativo', ayuda: 'Hora por hora' },
       { ruta: '/anomalias', nombre: 'Anomalías', icono: ScanSearch, permiso: 'operativo', ayuda: 'Lo que el modelo ve raro' },
-      { ruta: '/relaciones', nombre: 'Relaciones', icono: Waypoints, permiso: 'operativo', ayuda: 'Quién se conectó con qué' },
+      { ruta: '/correlaciones', nombre: 'Correlaciones', icono: Waypoints, permiso: 'operativo', ayuda: 'Firewall y sistema médico, unidos' },
     ],
   },
   {
@@ -65,7 +90,35 @@ export const NAV: Grupo[] = [
     items: [
       { ruta: '/cargar', nombre: 'Cargar datos', icono: FolderInput, permiso: 'cargar_datos', ayuda: 'Subir y procesar registros' },
       { ruta: '/inteligencia', nombre: 'Reglas e indicadores', icono: Network, permiso: 'tecnico', ayuda: 'Sigma, STIX y MISP' },
-      { ruta: '/ci', nombre: 'Estado de CI', icono: ShieldCheck, permiso: 'ver_ci', ayuda: 'Resultado de las pruebas de GitHub Actions' },
+      {
+        ruta: '/tickets',
+        nombre: 'Tickets de reglas',
+        icono: Ticket,
+        permiso: 'pedir_reglas',
+        tambien: 'gestionar_reglas',
+        ayuda: 'El SOC pide cambios de reglas y TI los aplica',
+      },
+      {
+        ruta: '/listas',
+        nombre: 'Listas de comparación',
+        icono: ListChecks,
+        permiso: 'tecnico',
+        ayuda: 'Listas blanca y negra de «Verificar contenido», editables sin reiniciar',
+      },
+      {
+        ruta: '/realimentacion',
+        nombre: 'Realimentación',
+        icono: RefreshCw,
+        permiso: 'tecnico',
+        ayuda: 'Métricas precision/recall/F1, recalibración de umbrales y reentrenamiento',
+      },
+      {
+        ruta: '/ci',
+        nombre: 'Estado de CI',
+        icono: ShieldCheck,
+        permiso: 'ver_ci',
+        ayuda: 'Resultado de los checks de GitHub Actions en la última ejecución',
+      },
     ],
   },
   {
@@ -85,8 +138,12 @@ export const NAV: Grupo[] = [
 export const TODAS = NAV.flatMap((g) => g.items)
 
 /** Primera pantalla a la que el rol tiene acceso. */
+export function accede(i: Item, permisos: Permiso[]) {
+  return permisos.includes(i.permiso) || Boolean(i.tambien && permisos.includes(i.tambien))
+}
+
 export function inicioDe(permisos: Permiso[]) {
-  return TODAS.find((i) => permisos.includes(i.permiso))?.ruta ?? '/inicio'
+  return TODAS.find((i) => accede(i, permisos))?.ruta ?? '/inicio'
 }
 
 /** Áreas que se muestran en las tarjetas de rol del ingreso. */

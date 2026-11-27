@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Cybersecurity News</title>
+    <link>https://news.example.com/</link>
+    <description>Noticias de ciberseguridad</description>
+    <language>es</language>
+    <item>
+      <title>Nueva campaña de ransomware apunta a hospitales en Latinoamérica</title>
+      <link>https://news.example.com/ransomware-hospitales-2026</link>
+      <description>Investigadores reportan una campaña de ransomware que explota vulnerabilidades de VPN para cifrar sistemas clínicos.</description>
+      <pubDate>Thu, 26 Nov 2026 18:45:00 +0000</pubDate>
+      <guid>https://news.example.com/ransomware-hospitales-2026</guid>
+    </item>
+    <item>
+      <title>Fuga de datos por API mal configurada en proveedor de salud</title>
+      <link>https://news.example.com/api-salud-fuga</link>
+      <description>Una API expuesta sin autenticación dejó accesibles historiales de pacientes durante varias semanas.</description>
+      <pubDate>Wed, 25 Nov 2026 08:15:00 +0000</pubDate>
+      <guid>https://news.example.com/api-salud-fuga</guid>
+    </item>
+  </channel>
+</rss>

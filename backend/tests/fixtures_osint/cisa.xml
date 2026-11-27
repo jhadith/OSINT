@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>All CISA Advisories</title>
+    <link>https://www.cisa.gov/</link>
+    <description>Advisories from CISA</description>
+    <language>en</language>
+    <item>
+      <title>CISA and Partners Publish Advisory on Hospital Ransomware Campaign</title>
+      <link>https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-1111</link>
+      <description>&lt;p&gt;CISA y el FBI publican un aviso conjunto sobre campañas de ransomware contra hospitales y redes de salud.&lt;/p&gt;</description>
+      <pubDate>Tue, 24 Nov 2026 10:00:00 +0000</pubDate>
+      <guid>https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-1111</guid>
+    </item>
+    <item>
+      <title>CISA Adds One Vulnerability to Known Exploited Vulnerabilities Catalog</title>
+      <link>https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-1112</link>
+      <description>CISA actualiza el catálogo KEV con una vulnerabilidad explotada activamente.</description>
+      <pubDate>Mon, 23 Nov 2026 09:00:00 +0000</pubDate>
+      <guid>https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-1112</guid>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,46 @@
+# Sentinel Salud con PostgreSQL.
+#   1. copia .env.example a .env y cambia POSTGRES_PASSWORD
+#   2. docker compose up -d --build
+#   3. abre http://127.0.0.1:8000  (usuarios jefe, analista, ti, salud, auditor; clave SENTINEL_CLAVE_DEMO)
+#
+# Los CSV del reto van en ./datos (se montan solo lectura). La consola solo escucha en 127.0.0.1:
+# no queda expuesta a la red del evento. PostgreSQL no publica ningún puerto: solo lo ve la app.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sentinel
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en el archivo .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    image: sentinel-salud:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SENTINEL_DB_URL: postgresql://sentinel:${POSTGRES_PASSWORD}@db:5432/sentinel
+      SENTINEL_CLAVE_DEMO: ${SENTINEL_CLAVE_DEMO:-demo2026}
+      SENTINEL_TELEGRAM: ${SENTINEL_TELEGRAM:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    ports:
+      - "127.0.0.1:${SENTINEL_PUERTO:-8000}:8000"
+    volumes:
+      - estado:/data/estado
+      - ./datos:/data/datos:ro
+
+volumes:
+  pgdata:
+  estado:

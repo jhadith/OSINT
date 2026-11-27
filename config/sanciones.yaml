@@ -1,0 +1,19 @@
+# Detección de tramitadores y sanción progresiva del simulador de chatbot (S8/T21/T22).
+# Los calibra el SOC aquí; el código no define estos valores (hay test que lo comprueba).
+
+# Reservas por dispositivo y día que marcan al dispositivo como candidato a revisión.
+umbral_reservas_dispositivo_dia: 10
+
+# Bandas de perfil del informe 14.6 (reservas/dispositivo/día):
+# normal ≤6, familiar (equipo compartido) ≤12, 13–24 en observación, tramitador 25–100.
+normal_max_reservas_dia: 6
+familiar_max_reservas_dia: 12
+tramitador_min_reservas_dia: 25
+tramitador_max_reservas_dia: 100
+
+# Sanción progresiva SOLO sobre el dispositivo emisor: 1ª ofensa = 1 h exactas,
+# luego 4 h, 24 h y 72 h (tope).
+bloqueo_horas: [1, 4, 24, 72]
+
+# Fuera de esta ventana el contador de ofensas vuelve a empezar.
+ventana_ofensas_dias: 30

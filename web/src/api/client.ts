@@ -10,17 +10,28 @@ import type {
   Ejecutivo,
   EntradaBitacora,
   EstadoCI,
+  EstadoSolicitud,
+  Exporte,
   Fuente,
   Grafo,
+  IndicadorLista,
   Inteligencia,
   ListaAnalisis,
   PaginaAnomalias,
   PuntoSerie,
+  Realimentacion,
+  ResultadoRecalibrar,
   Riesgo,
   Rol,
   Sesion,
+  SolicitudLista,
   Tendencia,
+  OsintMeta,
+  ResultadoOsint,
+  TipoLista,
   Verificacion,
+  ListaTickets,
+  TicketRegla,
 } from './types'
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api'
@@ -80,6 +91,7 @@ const post = <T>(path: string, body?: unknown) =>
   crudo(path, { method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body ?? {}) }).then(
     (r) => r.json() as Promise<T>,
   )
+const borrar = <T>(path: string) => crudo(path, { method: 'DELETE' }).then((r) => r.json() as Promise<T>)
 
 /** Subida con barra de progreso (fetch no informa el avance de envío). */
 function subir<T>(path: string, fd: FormData, onAvance: (fraccion: number) => void): Promise<T> {
@@ -143,7 +155,8 @@ export const api = {
   // estratégico
   ejecutivo: () => get<Ejecutivo>('/ejecutivo'),
   riesgos: () => get<{ riesgos: Riesgo[]; controles: Control[]; analisis: string | null }>('/riesgos'),
-  tendencias: () => get<{ nota: string; tendencias: Tendencia[] }>('/threatpulse'),
+  tendencias: () => get<{ nota: string; tendencias: Tendencia[]; osint?: OsintMeta }>('/threatpulse'),
+  actualizarTendencias: () => post<ResultadoOsint>('/threatpulse/actualizar'),
 
   // operativo
   casos: () => get<CasoResumen[]>('/casos'),
@@ -172,11 +185,50 @@ export const api = {
   gestionar: (codigo: string, estado: string, respuesta_publica: string, nota_interna: string) =>
     post<Denuncia>(`/denuncias/${encodeURIComponent(codigo)}/gestion`, { estado, respuesta_publica, nota_interna }),
 
+  // tablero de 5 pestañas con impacto en el negocio
+  tablero: () => get<unknown>('/tablero'),
+  // reporte de inteligencia (8 entregables) en PDF
+  informePdf: () => descargarArchivo('/exportes/informe-pdf', 'reporte_inteligencia_sentinel.pdf'),
+  // tickets de reglas SOC → TI
+  tickets: () => get<ListaTickets>('/tickets'),
+  crearTicket: (t: Record<string, string>) => post<TicketRegla>('/tickets', t),
+  gestionarTicket: (codigo: string, estado: string, respuesta: string) =>
+    post<TicketRegla>(`/tickets/${encodeURIComponent(codigo)}/gestion`, { estado, respuesta }),
+
   // técnico
   inteligencia: () => get<Inteligencia>('/inteligencia'),
   ciEstado: () => get<EstadoCI>('/ci/estado'),
-  exportar: (tipo: 'stix' | 'misp' | 'sigma') =>
-    descargarArchivo(`/exportes/${tipo}`, tipo === 'sigma' ? 'reglas_sigma.zip' : `sentinel_${tipo}.json`),
+  exportar: (tipo: Exporte) =>
+    descargarArchivo(
+      `/exportes/${tipo}`,
+      tipo === 'sigma'
+        ? 'reglas_sigma.zip'
+        : tipo === 'powerbi'
+          ? 'sentinel_powerbi.xlsx'
+          : tipo === 'maltego'
+            ? 'sentinel_maltego.mtgx'
+            : tipo === 'gerencial'
+              ? 'informe_gerencial.pdf'
+              : tipo === 'presentacion'
+                ? 'presentacion_soc.html'
+                : `sentinel_${tipo}.json`,
+    ),
+
+  // listas de comparación (S15/T17b)
+  listasIndicadores: () => get<IndicadorLista[]>('/listas/indicadores'),
+  listasAlta: (tipo: TipoLista, valor: string, etiqueta: string) =>
+    post<IndicadorLista>('/listas/indicadores', { tipo, valor, etiqueta }),
+  listasBaja: (id: number) => borrar<IndicadorLista>(`/listas/indicadores/${id}`),
+  listasSolicitudes: (estado?: EstadoSolicitud) =>
+    get<SolicitudLista[]>(`/listas/solicitudes${estado ? `?estado=${encodeURIComponent(estado)}` : ''}`),
+  listasSolicitar: (tipo: TipoLista, valor: string, justificacion: string, fuente = '') =>
+    post<SolicitudLista>('/listas/solicitudes', { tipo, valor, justificacion, fuente }),
+  listasResolver: (id: number, aprobar: boolean, motivo: string) =>
+    post<SolicitudLista>(`/listas/solicitudes/${id}/resolver`, { aprobar, motivo }),
+
+  // realimentación (S9/T18)
+  realimentacion: () => get<Realimentacion>('/realimentacion'),
+  recalibrar: (motivo: string) => post<ResultadoRecalibrar>('/realimentacion/recalibrar', { motivo }),
 
   // personal de salud
   verificarEnlace: (url: string) => post<Verificacion>('/verificar/enlace', { url }),

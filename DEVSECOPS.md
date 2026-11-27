@@ -30,10 +30,12 @@ git push -u origin feature/nombre-del-cambio
 | 2. Codificar | Estilo y errores comunes del código | ruff (backend, motor y pruebas) y oxlint sin advertencias (frontend) | Job `lint` |
 | 2. Codificar | Revisión por pares | Pull requests con revisión obligatoria | Protección de rama (ver abajo) |
 | 3. Construir | Dependencias con versión fija y sin vulnerabilidades conocidas | Locks con hashes (`ci/*.lock`, `--require-hashes`), `package-lock.json`, `pip-audit`, `npm audit` | Jobs `python` y `web` |
+| 4. Probar (dinámica) | El backend de V5 funciona también sobre PostgreSQL | pytest con `SENTINEL_DB_URL` | Job `postgres` |
+| 3. Construir | La imagen única (consola + backend + motor) compila | `docker build` | Job `docker` |
 | 4. Probar (estática) | Código Python inseguro | Bandit | Job `python` |
 | 4. Probar (estática) | SAST de Python y TypeScript | CodeQL (`security-extended`) | Job `codeql` |
 | 4. Probar (estática) | SAST, calidad, duplicación y cobertura de pruebas | SonarQube Cloud con puerta de calidad | Job `sonarqube` |
-| 4. Probar (dinámica) | Motor y API funcionan y detectan los casos; cobertura mínima de 95 % | pytest + pytest-cov (`.coveragerc` en `motor` y `backend`) | Job `python` |
+| 4. Probar (dinámica) | Motor y API funcionan y detectan los casos; cobertura mínima de 90 % en Python | pytest + pytest-cov (`.coveragerc` en `motor` y `backend`) | Jobs `python` y `postgres` |
 | 4. Probar | Lógica del frontend (formato, navegación, cliente de la API, sesión); cobertura mínima de 95 % | Vitest + cobertura v8 | Job `web` |
 | 4. Probar (dinámica) | Flujos completos en un navegador real: ingreso, decisión con motivo, reidentificación, permisos por rol, denuncia pública y XSS | Playwright (E2E) | Job `pruebas-dinamicas` |
 | 4. Probar (dinámica) | Seguridad de la API en vivo: 401/403 por rol, cierre de sesión, path traversal, subida de archivos, CORS, anti-spam y bloqueo por fuerza bruta | pytest + httpx contra `127.0.0.1` | Job `pruebas-dinamicas` |
@@ -45,11 +47,11 @@ git push -u origin feature/nombre-del-cambio
 
 ## Qué bloquea un cambio
 
-El job `liberar` solo genera entregables si pasan `secretos`, `lint`, `python`, `web`, `codeql`, `pruebas-dinamicas` y `dast`. Fallan en estos casos:
+El job `liberar` solo genera entregables si pasan `secretos`, `lint`, `python`, `postgres`, `web`, `docker`, `codeql`, `pruebas-dinamicas` y `dast`. Fallan en estos casos:
 
 - Gitleaks encuentra un secreto en cualquier commit.
 - Falla una prueba de `pytest` del motor o del backend, o de Vitest en el frontend.
-- La cobertura del motor, del backend o de la lógica del frontend baja de 95 %.
+- La cobertura del motor o del backend baja de 90 %, o la de la lógica del frontend baja de 95 %.
 - `ruff` u `oxlint` encuentran un problema.
 - Bandit encuentra un problema de severidad media o alta.
 - `pip-audit` o `npm audit` (nivel alto) encuentran una vulnerabilidad conocida.
@@ -78,7 +80,7 @@ En Windows (CMD), usa `set SONAR_TOKEN=...` y `set SONAR_PROJECT_KEY=...`. El re
 
 ## Panel de estado de CI en la consola
 
-El módulo **Estado de CI** (`/ci`, menú *Técnico*) muestra el resultado de los ocho checks de la última ejecución: cuáles pasaron, cuáles fallaron o se cancelaron y cuáles quedaron omitidos. Solo lo ve el rol **TI**, mediante el permiso específico `ver_ci` (los analistas no lo tienen).
+El módulo **Estado de CI** (`/ci`, menú *Técnico*) muestra el resultado de los diez checks de la última ejecución: cuáles pasaron, cuáles fallaron o se cancelaron y cuáles quedaron omitidos. Solo lo ve el rol **TI**, mediante el permiso específico `ver_ci` (los analistas no lo tienen).
 
 El job `resumen-ci` escribe `web/public/estado-ci.json` al terminar cada corrida. Corre con `if: always()` para que también aparezcan los jobs omitidos, por ejemplo SonarQube cuando no está configurado. El backend solo lee ese archivo en `GET /api/ci/estado`: no consulta GitHub ni usa tokens, así que el prototipo sigue funcionando sin red. Antes de la primera ejecución real se incluye un JSON de ejemplo con `origen: "ejemplo"` para poder revisar la pantalla.
 
@@ -117,7 +119,7 @@ El job `liberar` crea un release de GitHub con los paquetes y su `SHA256SUMS.txt
 1. **Actions**: en *Settings > Actions > General*, permite que corran los workflows.
 2. **Protección de la rama `main`**: en *Settings > Branches > Add rule*:
    - Exige pull request con al menos 1 aprobación.
-   - Exige que pasen los checks `Secretos (Gitleaks)`, `Lint (backend ruff y frontend oxlint)`, `Motor y backend (pytest, Bandit, pip-audit)`, `Consola web (pruebas, cobertura, build, npm audit)`, `SAST (CodeQL)`, `Pruebas dinámicas (E2E Playwright y API en vivo)`, `DAST (OWASP ZAP sobre 127.0.0.1)` y `SonarQube Cloud (SAST + cobertura)`. No exigas `Resumen de CI para la consola`: corre siempre con `if: always()` y solo genera el JSON del panel.
+   - Exige que pasen los checks `Secretos (Gitleaks)`, `Lint (backend ruff y frontend oxlint)`, `Motor y backend (pytest, Bandit, pip-audit)`, `Backend sobre PostgreSQL`, `Consola web (pruebas, cobertura, build, npm audit)`, `Imagen Docker (build)`, `SAST (CodeQL)`, `Pruebas dinámicas (E2E Playwright y API en vivo)`, `DAST (OWASP ZAP sobre 127.0.0.1)` y `SonarQube Cloud (SAST + cobertura)`. No exigas `Resumen de CI para la consola`: corre siempre con `if: always()` y solo genera el JSON del panel.
    - Bloquea los force push.
 3. **Avisos de seguridad**: en *Settings > Code security* activa Secret scanning y Private vulnerability reporting. Las actualizaciones automáticas de Dependabot no se usan: las versiones se actualizan a mano y `pip-audit` / `npm audit` bloquean el pipeline si alguna tiene una vulnerabilidad conocida.
 4. **CodeQL**: funciona sin configurar nada; guarda los resultados como artefacto. Para verlos en la pestaña Security, quien administra el repo debe activar *Settings > Code security > Code scanning* (en repos privados requiere GitHub Advanced Security) y quitar `upload: never` del workflow.

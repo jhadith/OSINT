@@ -8,8 +8,10 @@
   "checks": [
     { "id": "secretos", "nombre": "Secretos (Gitleaks)", "resultado": "success", "detalle": "Sin secretos en el código" },
     { "id": "lint", "nombre": "Lint (backend ruff y frontend oxlint)", "resultado": "success", "detalle": "Sin advertencias" },
-    { "id": "python", "nombre": "Motor y backend (pytest, Bandit, pip-audit)", "resultado": "success", "detalle": "Cobertura mínima 95 %" },
+    { "id": "python", "nombre": "Motor y backend (pytest, Bandit, pip-audit)", "resultado": "success", "detalle": "Cobertura mínima 90 %" },
+    { "id": "postgres", "nombre": "Backend sobre PostgreSQL", "resultado": "success", "detalle": "Pruebas con SENTINEL_DB_URL" },
     { "id": "web", "nombre": "Consola web (pruebas, cobertura, build, npm audit)", "resultado": "success", "detalle": "Cobertura mínima 95 %" },
+    { "id": "docker", "nombre": "Imagen Docker (build)", "resultado": "success", "detalle": "Imagen sentinel-salud:ci construida" },
     { "id": "codeql", "nombre": "SAST (CodeQL)", "resultado": "success", "detalle": "Sin hallazgos de nivel error" },
     { "id": "pruebas-dinamicas", "nombre": "Pruebas dinámicas (E2E Playwright y API en vivo)", "resultado": "success", "detalle": "App levantada en 127.0.0.1:8010" },
     { "id": "dast", "nombre": "DAST (OWASP ZAP sobre 127.0.0.1)", "resultado": "success", "detalle": "Sin reglas FAIL" },
