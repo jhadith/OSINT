@@ -104,10 +104,12 @@ def _conexion() -> sqlite3.Connection:
     return db
 
 
+_CAMPOS_FILA = ("id", "tipo", "ext", "tamano", "estado", "texto", "creado_en", "nota")
+
+
 def _fila_dict(fila: sqlite3.Row) -> dict:
-    return {"id": fila["id"], "tipo": fila["tipo"], "ext": fila["ext"], "tamano": fila["tamano"],
-            "estado": fila["estado"], "texto": fila["texto"], "creado_en": fila["creado_en"],
-            "nota": fila["nota"]}
+    datos = dict(zip(fila.keys(), tuple(fila), strict=True))
+    return {campo: datos[campo] for campo in _CAMPOS_FILA}
 
 
 # ---------- validación estricta ----------

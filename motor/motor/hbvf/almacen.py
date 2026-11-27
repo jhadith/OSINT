@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -48,10 +50,33 @@ def _ahora() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+def _raices_permitidas() -> list[Path]:
+    """Carpetas desde las que el motor puede leer datasets: el proyecto, las carpetas de datos y estado
+    configuradas por el backend (SENTINEL_DATOS, SENTINEL_ESTADO) y la carpeta temporal del sistema."""
+    raices = [Path(__file__).resolve().parents[3], Path(tempfile.gettempdir()).resolve()]
+    for var in ("SENTINEL_DATOS", "SENTINEL_ESTADO"):
+        if os.environ.get(var):
+            raices.append(Path(os.environ[var]).resolve())
+    return raices
+
+
+def ruta_dataset(ruta: Path | str) -> Path:
+    """Valida la ruta de un dataset antes de abrirlo (evita path traversal).
+
+    Resuelve enlaces simbólicos y `..`, exige un archivo regular y que quede dentro de una carpeta permitida.
+    """
+    destino = Path(ruta).resolve(strict=True)
+    if not destino.is_file():
+        raise ValueError(f"No es un archivo: {ruta}")
+    if not any(destino.is_relative_to(raiz) for raiz in _raices_permitidas()):
+        raise ValueError(f"Ruta fuera de las carpetas de datos permitidas: {ruta}")
+    return destino
+
+
 def hash_archivo(ruta: Path | str) -> str:
     """SHA-256 del archivo fuente (trazabilidad del dataset ingerido)."""
     digest = hashlib.sha256()
-    with open(ruta, "rb") as archivo:
+    with open(ruta_dataset(ruta), "rb") as archivo:
         for bloque in iter(lambda: archivo.read(65536), b""):
             digest.update(bloque)
     return digest.hexdigest()

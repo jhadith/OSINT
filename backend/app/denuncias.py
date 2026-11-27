@@ -55,7 +55,8 @@ def _enmascarar(texto: str) -> str:
 # Cédula ecuatoriana: provincia 01-24 o 30, tercer dígito 0-5 y 10 dígitos (los 9 base más el
 # dígito verificador). Los celulares (09 + 8 dígitos) no entran aquí porque se resuelven antes.
 PATRON_CEDULA = re.compile(r"(?<!\d)(?:0[1-9]|1\d|2[0-4]|30)[0-5]\d{7}(?!\d)")
-PATRON_EMAIL = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+")
+# Sin backtracking superlineal: empieza solo al inicio de un token y con longitudes acotadas.
+PATRON_EMAIL = re.compile(r"(?<![a-zA-Z0-9_.+-])[a-zA-Z0-9_.+-]{1,64}@[a-zA-Z0-9-]{1,63}(?:\.[a-zA-Z0-9-]{1,63}){1,8}")
 PATRON_CELULAR = re.compile(r"(?<!\d)09\d{8}(?!\d)")          # celular 09xx
 PATRON_FIJO = re.compile(r"(?<!\d)07\d{7}(?!\d)")              # fijo 07xx
 PATRON_INTL = re.compile(r"(?<!\d)\+?593\d{9}(?!\d)")           # +593...
