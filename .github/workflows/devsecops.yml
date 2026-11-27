@@ -326,12 +326,17 @@ jobs:
       pull-requests: read
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+      # La organización y la clave del proyecto no son secretas: se aceptan como Variables o como Secrets.
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || secrets.SONAR_ORGANIZATION }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || secrets.SONAR_PROJECT_KEY }}
     steps:
       - name: Sin configurar
         if: env.SONAR_TOKEN == '' || env.SONAR_ORGANIZATION == '' || env.SONAR_PROJECT_KEY == ''
-        run: echo "::notice::Para activar SonarQube Cloud agrega el secreto SONAR_TOKEN y las variables SONAR_ORGANIZATION y SONAR_PROJECT_KEY (ver DEVSECOPS.md)."
+        run: |
+          [ -z "$SONAR_TOKEN" ] && echo "::warning::Falta el secreto SONAR_TOKEN (Settings > Secrets and variables > Actions > pestaña Secrets)."
+          [ -z "$SONAR_ORGANIZATION" ] && echo "::warning::Falta SONAR_ORGANIZATION (como Variable o como Secret del repositorio)."
+          [ -z "$SONAR_PROJECT_KEY" ] && echo "::warning::Falta SONAR_PROJECT_KEY (como Variable o como Secret del repositorio)."
+          echo "SonarQube Cloud no se ejecutó en esta corrida. Revisa los nombres exactos y que estén en Repository, no en un Environment."
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         if: env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != ''
         with:
