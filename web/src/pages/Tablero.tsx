@@ -1,5 +1,5 @@
-import { ArrowUpRight, Database, Download, FileText, Maximize2, ShieldAlert, X } from 'lucide-react'
-import { type ReactNode, useEffect, useState } from 'react'
+import { Database, Download, FileText, ShieldAlert } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Area,
@@ -17,7 +17,8 @@ import {
 } from 'recharts'
 import { api } from '../api/client'
 import type { Gravedad as TGravedad, HistoriaItem } from '../api/types'
-import { Pulso } from '../components/Pulso'
+import { Tarjeta } from '../components/Tarjeta'
+import { Tendencia } from '../components/Tendencia'
 import { Carga, Gravedad } from '../components/ui'
 import { duracion, enPalabras, ESTADO_CASO, ESTADO_DENUNCIA, fFecha, fMesTitulo, num } from '../lib/format'
 import { useSesion } from '../lib/sesion'
@@ -130,59 +131,6 @@ export default function Tablero() {
     <Carga st={st} reintentar={reintentar} filas={8}>
       {(d) => <Vista d={d} />}
     </Carga>
-  )
-}
-
-// ---------- tarjeta que se expande ----------
-interface TarjetaProps {
-  titulo: string
-  dato?: ReactNode
-  area: string
-  children: ReactNode
-  grande?: ReactNode
-  ruta?: string
-  tono?: Nivel
-}
-
-function Tarjeta({ titulo, dato, area, children, grande, ruta, tono }: TarjetaProps) {
-  const [abierta, setAbierta] = useState(false)
-  useEffect(() => {
-    if (!abierta) return
-    const cerrar = (e: KeyboardEvent) => e.key === 'Escape' && setAbierta(false)
-    window.addEventListener('keydown', cerrar)
-    return () => window.removeEventListener('keydown', cerrar)
-  }, [abierta])
-  return (
-    <>
-      <section className={`tj ${tono ? `tj--${tono}` : ''}`} style={{ gridArea: area }}>
-        <header className="tj__cab">
-          <h2>{titulo}</h2>
-          {dato && <span className="tj__dato">{dato}</span>}
-          <button className="tj__ampliar" onClick={() => setAbierta(true)} aria-label={`Ampliar ${titulo}`} title="Ampliar">
-            <Maximize2 size={15} />
-          </button>
-        </header>
-        <div className="tj__cuerpo">{children}</div>
-      </section>
-      {abierta && (
-        <div className="tj-modal" role="dialog" aria-modal="true" aria-label={titulo} onClick={() => setAbierta(false)}>
-          <div className="tj-modal__caja" onClick={(e) => e.stopPropagation()}>
-            <header className="tj-modal__cab">
-              <h2>{titulo}</h2>
-              {ruta && (
-                <Link to={ruta} className="boton boton--secundario boton--chico">
-                  Ir a la sección <ArrowUpRight size={14} aria-hidden />
-                </Link>
-              )}
-              <button className="tj__ampliar" onClick={() => setAbierta(false)} aria-label="Cerrar">
-                <X size={18} />
-              </button>
-            </header>
-            <div className="tj-modal__cuerpo">{grande ?? children}</div>
-          </div>
-        </div>
-      )}
-    </>
   )
 }
 
@@ -341,30 +289,24 @@ function Resumen({ d }: { d: DatosTablero }) {
   const { puede } = useSesion()
   const r = d.resumen
   const pend = r.historia.filter((h) => h.estado === 'pendiente')
+  const abrir = puede('operativo') ? (id: string) => ir(`/casos/${id}`) : undefined
   return (
     <>
       <Tarjeta
-        titulo="Pulso del mes"
+        titulo="Tendencia del mes"
         dato={`${r.incidentes} incidentes`}
         area="a"
         ruta="/linea"
         grande={
           <>
-            <Pulso pulso={r.pulso} historia={r.historia} onElegir={puede('operativo') ? (id) => ir(`/casos/${id}`) : undefined} />
+            <div style={{ height: 380 }}>
+              <Tendencia pulso={r.pulso} porDia={d.internas.porDia} historia={r.historia} grande onElegir={abrir} />
+            </div>
             <TablaHistoria h={r.historia} />
           </>
         }
       >
-        <Pulso pulso={r.pulso} historia={r.historia} onElegir={puede('operativo') ? (id) => ir(`/casos/${id}`) : undefined} />
-        <ul className="pulso-chips">
-          {r.historia.map((h) => (
-            <li key={h.id} className={`pulso-chips__i pulso-chips__i--${h.gravedad}`}>
-              <Link to={`/casos/${h.id}`}>
-                <b>{fFecha(h.inicio)}</b> {h.titulo}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <Tendencia pulso={r.pulso} porDia={d.internas.porDia} historia={r.historia} onElegir={abrir} />
       </Tarjeta>
       <Tarjeta titulo="Amenazas de todas las secciones" dato={`${d.amenazas.length}`} area="b" grande={<ListaAmenazas items={d.amenazas} />}>
         <ListaAmenazas items={d.amenazas} max={7} />

@@ -68,6 +68,14 @@ test.describe('Control de acceso por rol', () => {
     await expect(page.getByRole('heading', { name: 'Esta sección está cerrada para tu rol' })).toBeVisible()
   })
 
+  test('el personal de salud entra a su panorama, sin datos técnicos', async ({ page }) => {
+    await ingresar(page, 'salud')
+    await expect(page).toHaveURL(/\/mi-panorama$/)
+    await expect(page.getByRole('heading', { name: /Tu panorama de seguridad/ })).toBeVisible()
+    const texto = await page.locator('body').innerText()
+    expect(texto).not.toMatch(/\b\d{1,3}(\.\d{1,3}){3}\b/)
+  })
+
   test('el personal de salud puede verificar un enlace sospechoso', async ({ page }) => {
     await ingresar(page, 'salud')
     await page.goto('/verificar')

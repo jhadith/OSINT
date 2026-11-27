@@ -39,7 +39,7 @@ Qué hace la configuración:
 - La consola solo escucha en `127.0.0.1` (no queda expuesta a la red del evento) y PostgreSQL no publica ningún puerto: solo la app lo ve.
 - La app corre con un usuario sin privilegios. El estado va al volumen `estado` y la base al volumen `pgdata`, así que sobreviven a reinicios.
 - Los CSV de `datos\` se montan solo lectura y nunca entran a la imagen. `.env` (claves y token de Telegram) tampoco entra a la imagen ni a Git.
-- Para Telegram real, llena `SENTINEL_TELEGRAM=enviar`, `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` en `.env`.
+- Para Telegram real, llena `SENTINEL_TELEGRAM=enviar`, `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` en `.env`. Los avisos al personal de salud van a `TELEGRAM_CHAT_SALUD` (opcional).
 
 ## Forma rápida sin Docker
 
@@ -101,6 +101,7 @@ Sin configurar nada, las alertas críticas se generan en **modo simulación** y 
 set SENTINEL_TELEGRAM=enviar
 set TELEGRAM_BOT_TOKEN=el_token_que_te_dio_BotFather
 set TELEGRAM_CHAT_ID=el_id_del_chat
+set TELEGRAM_CHAT_SALUD=el_id_del_chat_del_personal_de_salud
 python -m app.telegram
 ```
 
@@ -184,3 +185,24 @@ Sin configurar nada, Sentinel usa SQLite (archivo en `backend\estado`). Para usa
    ```
 
 Las tablas se crean solas. La bitácora, las decisiones y los registros son **de solo agregar** también en PostgreSQL (un disparador rechaza cualquier UPDATE o DELETE, incluso desde psql). Si PostgreSQL no responde, la consola sigue funcionando sobre SQLite y el tablero muestra «SQLite (respaldo)» en lugar de «PostgreSQL». La caché de lecturas OSINT sigue en un archivo local porque es solo caché.
+
+## Personal de salud: «Mi panorama», avisos y denuncias con voz o video
+
+- El usuario `salud` entra a **Mi panorama**: avisos de seguridad (con botón «Entendido», que queda en la bitácora),
+  qué está pasando en el mes en lenguaje simple, cómo afecta a su trabajo, amenazas del sector y lo que reportó.
+  El servidor filtra todo: no salen IPs, cuentas, seudónimos ni detalles de casos.
+- Los avisos se crean solos al terminar un análisis (posible fuga, cuenta usada de forma extraña, intentos de
+  adivinar contraseñas, reventa de citas) y cuando llegan 3 o más denuncias de enlaces falsos en una semana.
+  El analista también puede enviar uno desde un caso con «Avisar al personal de salud».
+- El portal `/denuncia` es anónimo (ya no pide correo ni teléfono). Se puede contar lo que pasó escribiendo,
+  grabando una nota de voz (hasta 3 min) o un video (hasta 60 s), y adjuntar fotos o capturas (máx. 3 archivos).
+- Cada foto, nota de voz o video se pasa a texto **en este mismo equipo** y el archivo original se borra. En ese
+  texto, las cédulas salen como `[Cédula protegida]`, los nombres como `[Nombre protegido]`, y también se protegen
+  correos, teléfonos y la fecha de nacimiento de un documento. La persona ve, antes de enviar, cómo le llega al equipo
+  de seguridad. Al SOC le llega la denuncia como siempre: solo texto, nunca el archivo.
+- Para leer fotos y pasar voz o video a texto, instala la lectura local (opcional, sin enviar nada a internet):
+  `pip install -r backend/requirements-ia.txt`. Las fotos funcionan al instante. Para voz y video, la primera vez se
+  descarga el modelo de transcripción: hazlo antes de la demo con internet (con `set SENTINEL_WHISPER_MODEL=base`
+  es más liviano). Sin esa instalación la denuncia igual llega, y el archivo se pasa a texto cuando se instale.
+- El navegador solo permite el micrófono y la cámara en `localhost` o con HTTPS. Para la demo, abre el portal
+  en la misma laptop donde corre el sistema. Desde un celular por la red hace falta HTTPS.

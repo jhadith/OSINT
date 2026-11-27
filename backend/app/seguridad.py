@@ -21,16 +21,18 @@ from fastapi import Header, HTTPException
 from . import config, estado
 
 ROLES = {
-    "jefe": {"nombre": "Jefatura de seguridad", "permisos": ["estrategico", "operativo", "ver_denuncias", "auditar"],
+    "jefe": {"nombre": "Jefatura de seguridad", "permisos": ["estrategico", "operativo", "ver_denuncias", "auditar",
+                                                         "avisar_personal"],
              "descripcion": "Ve el panorama del mes, los riesgos y recibe las alertas críticas."},
     "analista": {"nombre": "Analista del SOC", "permisos": ["estrategico", "operativo", "decidir", "reidentificar",
                                                              "cargar_datos", "tecnico", "ver_denuncias",
-                                                             "gestionar_denuncias", "verificar", "pedir_reglas"],
+                                                             "gestionar_denuncias", "verificar", "pedir_reglas",
+                                                             "avisar_personal"],
                  "descripcion": "Investiga los casos, decide y gestiona las denuncias."},
     "ti": {"nombre": "Equipo de TI", "permisos": ["estrategico", "tecnico", "cargar_datos", "gestionar_reglas", "ver_ci"],
            "descripcion": "Carga los datos y aplica reglas e indicadores en sus sistemas."},
-    "salud": {"nombre": "Personal de salud", "permisos": ["verificar"],
-              "descripcion": "Revisa enlaces e imágenes sospechosos antes de abrirlos."},
+    "salud": {"nombre": "Personal de salud", "permisos": ["panorama_salud", "verificar"],
+              "descripcion": "Recibe avisos de seguridad, ve lo que pasa en el mes y revisa enlaces e imágenes."},
     "auditor": {"nombre": "Auditoría", "permisos": ["estrategico", "auditar"],
                 "descripcion": "Revisa quién hizo qué y cuándo. Solo lectura."},
 }

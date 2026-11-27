@@ -203,19 +203,20 @@ def test_texto_extraido_sale_enmascarado(monkeypatch):
     monkeypatch.setattr(adjuntos, "_extraer_texto", lambda r: crudo)
     procesado = adjuntos.procesar(reg["id"])
     assert procesado["estado"] == "procesado"
-    assert procesado["texto"] == denuncias._enmascarar_pii(crudo)   # la función real, no una copia
+    assert procesado["texto"] == denuncias.proteger(crudo)          # la función real, no una copia
     assert "1712345678" not in procesado["texto"]
     assert "juan.perez" not in procesado["texto"]
     assert "0987654321" not in procesado["texto"]
-    assert "@ejemplo.com" in procesado["texto"]
+    assert "[Cédula protegida]" in procesado["texto"] and "[Correo protegido]" in procesado["texto"]
+    assert "[Teléfono protegido]" in procesado["texto"]
 
 
-def test_el_texto_pasa_por_enmascarar_pii_de_denuncias(monkeypatch):
+def test_el_texto_pasa_por_proteger_de_denuncias(monkeypatch):
     from app import denuncias
     reg = adjuntos.guardar(ogg(), "graba.ogg")
     monkeypatch.setattr(importlib.util, "find_spec", lambda nombre: object())
     monkeypatch.setattr(adjuntos, "_extraer_texto", lambda r: "texto crudo")
-    monkeypatch.setattr(denuncias, "_enmascarar_pii", lambda t: f"«{t}»")
+    monkeypatch.setattr(denuncias, "proteger", lambda t: f"«{t}»")
     procesado = adjuntos.procesar(reg["id"])
     assert procesado["texto"] == "«texto crudo»"
 

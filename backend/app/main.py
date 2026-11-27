@@ -9,16 +9,19 @@ import csv
 import io
 import json
 import zipfile
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Path, Query, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
 from . import (
+    adjuntos,
     analisis,
+    avisos,
     bd,
     ci,
     config,
@@ -31,6 +34,7 @@ from . import (
     informe_pdf,
     listas,
     osint,
+    panorama,
     realimentacion,
     reportes,
     riesgos,
@@ -53,8 +57,10 @@ async def cabeceras(request: Request, call_next):
     r.headers["X-Content-Type-Options"] = "nosniff"
     r.headers["X-Frame-Options"] = "DENY"
     r.headers["Referrer-Policy"] = "no-referrer"
-    r.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    r.headers["Content-Security-Policy"] = ("default-src 'self'; img-src 'self' data: blob:; style-src 'self' "
+    # Cámara y micrófono solo para este mismo sitio: el portal de denuncias graba voz y video.
+    r.headers["Permissions-Policy"] = "camera=(self), microphone=(self), geolocation=()"
+    r.headers["Content-Security-Policy"] = ("default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
+                                            "style-src 'self' "
                                             "'unsafe-inline'; script-src 'self'; connect-src 'self'; "
                                             "frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
     if request.url.path.startswith("/api"):
@@ -110,6 +116,10 @@ def salir(request: Request):
 def _al_terminar(i: str) -> None:
     try:
         telegram.avisar_criticos(i, datos.casos())
+    except HTTPException:
+        pass
+    try:
+        avisos.tras_analisis(i, datos.casos(), datos.agendamiento())
     except HTTPException:
         pass
 
@@ -336,7 +346,8 @@ class DenunciaPublica(BaseModel):
     medio: Literal["", "llamada", "whatsapp", "mensaje", "correo", "en_persona", "redes_sociales"] = ""
     contacto_sospechoso: str = Field(default="", max_length=80)
     enlace: str = Field(default="", max_length=500)
-    responder_a: str = Field(default="", max_length=120)
+    # Nota de voz, video o foto subidos antes con /api/publico/adjuntos (hasta 3): llegan como texto protegido.
+    adjuntos: list[Annotated[str, Field(pattern=r"^adj-[0-9a-f]{16}$")]] = Field(default=[], max_length=3)
     acepta_privacidad: bool
 
 
@@ -344,9 +355,36 @@ class DenunciaPublica(BaseModel):
 def denunciar(d: DenunciaPublica, request: Request):
     if not d.acepta_privacidad:
         raise HTTPException(400, "Para enviar la denuncia necesitamos que aceptes el aviso de privacidad.")
+    regs = [adjuntos.obtener(i) for i in dict.fromkeys(d.adjuntos)]
+    if any(r is None for r in regs):
+        raise HTTPException(400, "Uno de los archivos no llegó bien. Vuelve a grabarlo o adjuntarlo.")
     denuncias.limitar(request.client.host if request.client else "local")
-    r = denuncias.crear(d.model_dump())
+    r = denuncias.crear({**d.model_dump(), "texto_adjuntos": denuncias.texto_de_adjuntos(regs)})
+    avisos.tras_denuncia(denuncias.todas())
     return {"codigo": r["codigo"], "fecha": r["fecha"]}
+
+
+def _pasar_a_texto(adjunto_id: str) -> dict:
+    """Pasa el archivo a texto en este equipo (OCR o transcripción local) y, si lo logra, borra el original."""
+    reg = adjuntos.procesar(adjunto_id)
+    return adjuntos.descartar_original(adjunto_id) if reg["estado"] == "procesado" else reg
+
+
+@app.post("/api/publico/adjuntos")
+async def subir_adjunto(request: Request, archivo: UploadFile = File(...)):
+    """Nota de voz, video o foto para una denuncia. Se revisan los bytes reales y el tamaño antes de guardar."""
+    denuncias.limitar("adj:" + (request.client.host if request.client else "local"), maximo=12,
+                      mensaje="Subiste varios archivos seguidos desde este equipo. Intenta de nuevo en unos minutos.")
+    contenido = await archivo.read(adjuntos.MAX_VIDEO + 1)
+    if len(contenido) > adjuntos.MAX_VIDEO:
+        raise HTTPException(413, "El archivo supera los 50 MB. Graba un video más corto.")
+    try:
+        reg = adjuntos.guardar(contenido, archivo.filename or "")
+    except adjuntos.AdjuntoInvalido as e:
+        raise HTTPException(400, str(e))
+    # se pasa a texto aquí mismo para que la persona vea, antes de enviar, cómo llega su denuncia
+    reg = await run_in_threadpool(_pasar_a_texto, reg["id"])
+    return {"id": reg["id"], "tipo": reg["tipo"], "estado": reg["estado"], "texto": reg["texto"]}
 
 
 @app.get("/api/publico/denuncias/{codigo}")
@@ -364,15 +402,30 @@ def bandeja(s: Sesion = Depends(requiere("ver_denuncias"))):
                 vinculos.setdefault(cod, []).append(c["case_id"])
     except HTTPException:
         pass
-    ver_contacto = "gestionar_denuncias" in s.permisos
     out = []
     for d in denuncias.todas():
-        x = {k: v for k, v in d.items() if k != "contacto_sospechoso_ref"}
-        if not ver_contacto:
-            x["responder_a"] = "••••" if d["responder_a"] else ""
+        d = _completar_pendientes(d)
+        # Al SOC le llega la denuncia como siempre, en texto: nunca el archivo, el contacto crudo ni «responder_a»
+        # (este último venía de denuncias anteriores al canal anónimo).
+        x = {k: v for k, v in d.items()
+             if k not in ("contacto_sospechoso_ref", "responder_a", "descripcion_escrita", "adjuntos")}
+        x["contadoCon"] = [denuncias.ETIQUETA_ADJUNTO.get(a["tipo"], "Archivo")
+                           for a in filter(None, map(adjuntos.obtener, d.get("adjuntos", [])))]
         x["origenesAgendamiento"] = vinculos.get(d["codigo"], [])
         out.append(x)
     return out
+
+
+def _completar_pendientes(d: dict) -> dict:
+    """Si una nota de voz o video quedó sin pasar a texto (faltaba la librería local), se intenta de nuevo."""
+    regs = [r for r in map(adjuntos.obtener, d.get("adjuntos") or []) if r]
+    pendientes = [r for r in regs if r["estado"] != "procesado"]
+    if not pendientes:
+        return d
+    hechos = {r["id"]: _pasar_a_texto(r["id"]) for r in pendientes}
+    if all(h["estado"] != "procesado" for h in hechos.values()):
+        return d                                   # sigue faltando la librería: se intentará en la próxima visita
+    return denuncias.completar_texto(d["codigo"], denuncias.texto_de_adjuntos([hechos.get(r["id"], r) for r in regs]))
 
 
 class Gestion(BaseModel):
@@ -385,7 +438,47 @@ class Gestion(BaseModel):
 def gestionar(g: Gestion, codigo: str = Path(..., pattern=r"^DN-[0-9A-F]{6}$"),
               s: Sesion = Depends(requiere("gestionar_denuncias"))):
     d = denuncias.gestionar(codigo, g.estado, g.respuesta_publica.strip(), g.nota_interna.strip(), s.nombre, _rol(s))
-    return {k: v for k, v in d.items() if k != "contacto_sospechoso_ref"}
+    return {k: v for k, v in d.items()
+            if k not in ("contacto_sospechoso_ref", "responder_a", "descripcion_escrita", "adjuntos")}
+
+
+# ---------- avisos al personal de salud ----------
+class AvisoNuevo(BaseModel):
+    titulo: str = Field(min_length=5, max_length=120)
+    texto: str = Field(min_length=10, max_length=500)
+    consejo: str = Field(default="", max_length=300)
+    nivel: Literal["alto", "medio", "info"] = "medio"
+    caso: str = Field(default="", pattern=r"^(C\d{1,3})?$")
+
+
+@app.get("/api/avisos")
+def avisos_lista(s: Sesion = Depends(seguridad.sesion_actual)):
+    if "avisar_personal" in s.permisos:
+        return avisos.todos()
+    if "panorama_salud" in s.permisos:
+        return avisos.para(s.usuario)
+    estado.bitacora(s.nombre, _rol(s), "Acceso denegado", "avisos", "Intentó ver los avisos al personal")
+    raise HTTPException(403, "Tu rol no puede ver los avisos al personal de salud.")
+
+
+@app.get("/api/avisos/sugerido/{caso_id}")
+def avisos_sugerido(caso_id: str = ID_CASO, s: Sesion = Depends(requiere("avisar_personal"))):
+    return avisos.sugerido(datos.caso(caso_id))
+
+
+@app.post("/api/avisos")
+def avisos_crear(a: AvisoNuevo, s: Sesion = Depends(requiere("avisar_personal"))):
+    return avisos.crear(a.titulo, a.texto, a.consejo, a.nivel, "manual", s.nombre, _rol(s), caso=a.caso)
+
+
+@app.post("/api/avisos/{codigo}/leido")
+def avisos_leido(codigo: str = Path(..., pattern=r"^AV-[0-9A-F]{6}$"), s: Sesion = Depends(requiere("panorama_salud"))):
+    return avisos.marcar_leido(codigo, s.usuario, s.nombre, _rol(s))
+
+
+@app.get("/api/panorama-salud")
+def panorama_salud(s: Sesion = Depends(requiere("panorama_salud"))):
+    return panorama.salud(s.usuario)
 
 
 # ---------- técnico ----------
@@ -640,7 +733,8 @@ class Reporte(BaseModel):
 def reportar(r: Reporte, s: Sesion = Depends(requiere("verificar"))):
     d = denuncias.crear({"tipo": "contenido_reportado", "descripcion": r.comentario,
                          "enlace": r.entrada if r.entrada.startswith(("http", "www")) else "",
-                         "actor": s.nombre}, origen="personal de salud")
+                         "actor": s.nombre, "usuario": s.usuario}, origen="personal de salud")
+    avisos.tras_denuncia(denuncias.todas())
     return {"codigo": d["codigo"], "fecha": d["fecha"]}
 
 

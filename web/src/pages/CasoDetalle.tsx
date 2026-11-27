@@ -1,8 +1,8 @@
-import { ArrowLeft, BellRing, EyeOff, ShieldAlert, UserSearch } from 'lucide-react'
+import { ArrowLeft, BellRing, EyeOff, ShieldAlert, Stethoscope, UserSearch } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Caso, Evidencia } from '../api/types'
+import type { Aviso, AvisoBorrador, Caso, Evidencia, NivelAviso } from '../api/types'
 import { Carga, Gravedad, Pagina, Panel, Rango } from '../components/ui'
 import { bandera, ESTADO_CASO, fFechaHora, num } from '../lib/format'
 import { useSesion } from '../lib/sesion'
@@ -109,6 +109,8 @@ function Detalle({ c, alDecidir }: { c: Caso; alDecidir: (d: NonNullable<Caso['d
               <pre className="telegram">{c.alerta.texto}</pre>
             </Panel>
           )}
+
+          {puede('avisar_personal') && <AvisarPersonal caso={c.id} />}
 
           <Panel titulo="Cómo se detectó">
             <p className="chips">
@@ -286,6 +288,94 @@ function Reidentificar({ seudonimo }: { seudonimo: string }) {
             Reidentificar y registrar
           </button>
         </>
+      )}
+    </Panel>
+  )
+}
+
+/** El analista avisa al personal de salud en lenguaje simple. Parte de un texto sugerido sin datos técnicos. */
+function AvisarPersonal({ caso }: { caso: string }) {
+  const [b, setB] = useState<AvisoBorrador | null>(null)
+  const [enviado, setEnviado] = useState<Aviso | null>(null)
+  const [error, setError] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const cambiar = (k: keyof AvisoBorrador, v: string) => setB((x) => (x ? { ...x, [k]: v } : x))
+  return (
+    <Panel titulo={<><Stethoscope size={18} aria-hidden /> Avisar al personal de salud</>}>
+      {enviado ? (
+        <p className="ok-linea">
+          Aviso {enviado.codigo} enviado. El personal lo ve en «Mi panorama» y en la campana
+          {enviado.telegram === 'enviado' ? ', y también llegó por Telegram' : ''}.
+        </p>
+      ) : !b ? (
+        <>
+          <p className="nota">
+            Un mensaje corto para que médicos y enfermeras sepan qué está pasando y qué hacer. No lleva IPs, cuentas ni nombres: si se
+            pegan por error, el sistema los retira.
+          </p>
+          {error && <p className="error-linea">{error}</p>}
+          <button
+            className="boton boton--secundario"
+            onClick={() =>
+              api
+                .avisoSugerido(caso)
+                .then(setB)
+                .catch((e: Error) => setError(e.message))
+            }
+          >
+            Preparar aviso
+          </button>
+        </>
+      ) : (
+        <div className="aviso-form">
+          <label className="campo">
+            Título
+            <input value={b.titulo} onChange={(e) => cambiar('titulo', e.target.value)} maxLength={120} />
+          </label>
+          <label className="campo">
+            Qué está pasando
+            <textarea rows={3} value={b.texto} onChange={(e) => cambiar('texto', e.target.value)} maxLength={500} />
+          </label>
+          <label className="campo">
+            Qué debe hacer el personal
+            <textarea rows={2} value={b.consejo} onChange={(e) => cambiar('consejo', e.target.value)} maxLength={300} />
+          </label>
+          <div className="opciones" role="group" aria-label="Importancia">
+            {(
+              [
+                ['alto', 'Importante'],
+                ['medio', 'A tener en cuenta'],
+                ['info', 'Informativo'],
+              ] as [NivelAviso, string][]
+            ).map(([k, t]) => (
+              <button
+                key={k}
+                type="button"
+                className={`opcion ${b.nivel === k ? 'opcion--sel' : ''}`}
+                aria-pressed={b.nivel === k}
+                onClick={() => cambiar('nivel', k)}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          {error && <p className="error-linea">{error}</p>}
+          <button
+            className="boton"
+            disabled={enviando || b.titulo.trim().length < 5 || b.texto.trim().length < 10}
+            onClick={() => {
+              setEnviando(true)
+              setError('')
+              api
+                .crearAviso({ ...b, caso })
+                .then(setEnviado)
+                .catch((e: Error) => setError(e.message))
+                .finally(() => setEnviando(false))
+            }}
+          >
+            {enviando ? 'Enviando…' : 'Enviar aviso al personal'}
+          </button>
+        </div>
       )}
     </Panel>
   )

@@ -57,7 +57,8 @@ def test_validacion_sin_traza(cli):
 
 
 # ---------- autenticación ----------
-@pytest.mark.parametrize("ruta", ["/api/casos", "/api/ejecutivo", "/api/bitacora", "/api/denuncias", "/api/analisis/fuentes"])
+@pytest.mark.parametrize("ruta", ["/api/casos", "/api/ejecutivo", "/api/bitacora", "/api/denuncias", "/api/analisis/fuentes",
+                                  "/api/avisos", "/api/panorama-salud"])
 def test_sin_sesion_responde_401(cli, ruta):
     assert cli.get(ruta).status_code == 401
 
