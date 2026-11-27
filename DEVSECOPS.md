@@ -1,6 +1,25 @@
 # DevSecOps en Sentinel Salud
 
-El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `.github/workflows/devsecops.yml`. Corre en cada push a `main`, `dev` o `Pruebas`, en cada pull request y a mano desde **Actions > devsecops > Run workflow**. Todo se ejecuta dentro del runner de GitHub contra `127.0.0.1`: nunca toca sistemas reales ni la red del evento.
+El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `.github/workflows/devsecops.yml`. Corre en cada push a `main`, en cada pull request y a mano desde **Actions > devsecops > Run workflow**. Todo se ejecuta dentro del runner de GitHub contra `127.0.0.1`: nunca toca sistemas reales ni la red del evento.
+
+## Flujo de trabajo con ramas
+
+`main` es la única rama permanente y siempre debe estar estable. Cada cambio va en una rama corta con pull request:
+
+```
+main ──► rama de trabajo (feature/…, fix/…, ci/…, docs/…) ──PR──► main
+```
+
+```bash
+git switch main && git pull
+git switch -c feature/nombre-del-cambio
+# cambios, commits
+git push -u origin feature/nombre-del-cambio
+```
+
+1. Abre el PR hacia `main`. El pipeline completo corre sobre el PR.
+2. Un compañero revisa y aprueba.
+3. Con todo en verde, se hace merge y se borra la rama.
 
 ## Fases del informe y dónde se cumplen
 
@@ -26,7 +45,7 @@ El ciclo de desarrollo seguro del informe (numeral 9) ya está automatizado en `
 
 ## Qué bloquea un cambio
 
-El job `liberar` solo genera entregables si pasan `secretos`, `python`, `web`, `codeql`, `pruebas-dinamicas` y `dast`. Fallan en estos casos:
+El job `liberar` solo genera entregables si pasan `secretos`, `lint`, `python`, `web`, `codeql`, `pruebas-dinamicas` y `dast`. Fallan en estos casos:
 
 - Gitleaks encuentra un secreto en cualquier commit.
 - Falla una prueba de `pytest` del motor o del backend, o de Vitest en el frontend.
@@ -52,7 +71,7 @@ El resumen de la ejecución también muestra el estado de la puerta de calidad. 
 ```bash
 export SONAR_TOKEN=...              # sonarcloud.io > My Account > Security
 export SONAR_PROJECT_KEY=jhadith_osit
-python scripts/reporte_sonar.py --rama dev          # o --pr 27, o sin nada para la rama principal
+python scripts/reporte_sonar.py                     # rama principal; o --pr 31 para un pull request
 ```
 
 En Windows (CMD), usa `set SONAR_TOKEN=...` y `set SONAR_PROJECT_KEY=...`. El reporte queda en `reporte_sonarqube/`, que no se sube a Git.
@@ -88,7 +107,7 @@ El job `liberar` crea un release de GitHub con los paquetes y su `SHA256SUMS.txt
 1. **Actions**: en *Settings > Actions > General*, permite que corran los workflows.
 2. **Protección de la rama `main`**: en *Settings > Branches > Add rule*:
    - Exige pull request con al menos 1 aprobación.
-   - Exige que pasen los checks `Secretos (Gitleaks)`, `Motor y backend (pytest, Bandit, pip-audit)`, `Consola web (lint, build, npm audit)`, `SAST (CodeQL)`, `Pruebas dinámicas (E2E Playwright y API en vivo)` y `DAST (OWASP ZAP sobre 127.0.0.1)`.
+   - Exige que pasen los checks `Secretos (Gitleaks)`, `Lint (backend ruff y frontend oxlint)`, `Motor y backend (pytest, Bandit, pip-audit)`, `Consola web (pruebas, cobertura, build, npm audit)`, `SAST (CodeQL)`, `Pruebas dinámicas (E2E Playwright y API en vivo)`, `DAST (OWASP ZAP sobre 127.0.0.1)` y `SonarQube Cloud (SAST + cobertura)`.
    - Bloquea los force push.
 3. **Avisos de seguridad**: en *Settings > Code security* activa Secret scanning y Private vulnerability reporting. Las actualizaciones automáticas de Dependabot no se usan: las versiones se actualizan a mano y `pip-audit` / `npm audit` bloquean el pipeline si alguna tiene una vulnerabilidad conocida.
 4. **CodeQL**: funciona sin configurar nada; guarda los resultados como artefacto. Para verlos en la pestaña Security, quien administra el repo debe activar *Settings > Code security > Code scanning* (en repos privados requiere GitHub Advanced Security) y quitar `upload: never` del workflow.

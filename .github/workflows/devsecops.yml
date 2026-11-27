@@ -11,7 +11,7 @@ name: devsecops
 # scripts de instalación (--ignore-scripts), para que un paquete comprometido no corra código en el runner.
 on:
   push:
-    branches: [main, dev, Pruebas]
+    branches: [main]   # el resto de ramas se prueba con su pull request
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
