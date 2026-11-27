@@ -49,7 +49,7 @@ class ClienteFalso(rs.Cliente):
 
 
 def test_genera_html_csv_y_json(tmp_path):
-    datos = rs.generar(ClienteFalso(rama="dev"), tmp_path)
+    datos = rs.generar(ClienteFalso(rama="dev"), tmp_path, base=tmp_path)
     assert datos["metricas"]["new_coverage"] == "71.5"           # las métricas de código nuevo vienen en "period"
     html = (tmp_path / "reporte.html").read_text(encoding="utf-8")
     assert "No aprobada" in html and "Sentinel Salud" in html and "branch: dev" in html
@@ -74,7 +74,7 @@ def test_notas_y_valores():
 
 
 def test_resumen_markdown(tmp_path):
-    rs.generar(ClienteFalso(), tmp_path)
+    rs.generar(ClienteFalso(), tmp_path, base=tmp_path)
     texto = rs.resumen_markdown(json.loads((tmp_path / "datos.json").read_text()))
     assert "**Puerta de calidad:** No aprobada" in texto and "| Cobertura (%) | 97.1 |" in texto
 
@@ -98,12 +98,34 @@ def test_error_http_se_explica(monkeypatch):
 
 def test_main_sin_proyecto_y_con_resumen(tmp_path, monkeypatch, capsys):
     monkeypatch.delenv("SONAR_PROJECT_KEY", raising=False)
-    assert rs.main(["--salida", str(tmp_path)]) == 2
-    rs.generar(ClienteFalso(), tmp_path)
-    assert rs.main(["--resumen", str(tmp_path / "datos.json")]) == 0
+    monkeypatch.chdir(tmp_path)
+    assert rs.main(["--salida", "reporte"]) == 2
+    rs.generar(ClienteFalso(), "reporte")
+    assert rs.main(["--resumen", "reporte/datos.json"]) == 0
     assert "Puerta de calidad" in capsys.readouterr().out
 
 
 def test_solo_acepta_https():
     with pytest.raises(rs.ErrorSonar, match="https"):
         rs.Cliente("t", "x", host="file:///etc/passwd")
+
+
+@pytest.mark.parametrize("ruta", ["../fuera", "/etc", "a/../../fuera"])
+def test_rechaza_rutas_fuera_del_proyecto(tmp_path, ruta):
+    with pytest.raises(rs.ErrorSonar, match="no permitida"):
+        rs.generar(ClienteFalso(), ruta, base=tmp_path / "proyecto")
+
+
+def test_rechaza_enlaces_simbolicos_que_escapan(tmp_path):
+    base = tmp_path / "proyecto"
+    base.mkdir()
+    (base / "enlace").symlink_to(tmp_path)
+    with pytest.raises(rs.ErrorSonar):
+        rs.ruta_segura("enlace/otra", base)
+    assert rs.ruta_segura("reporte_sonarqube", base) == (base / "reporte_sonarqube").resolve()
+
+
+def test_main_rechaza_resumen_fuera_del_proyecto(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    assert rs.main(["--resumen", "../../etc/passwd"]) == 2
+    assert "no permitida" in capsys.readouterr().err

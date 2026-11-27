@@ -217,7 +217,20 @@ Alcance: {html.escape(alcance)} · Generado: {html.escape(datos['generado'])}</p
     (carpeta / "reporte.html").write_text(doc, encoding="utf-8")
 
 
-def generar(cliente: Cliente, carpeta: Path) -> dict:
+def ruta_segura(ruta: Path | str, base: Path | None = None) -> Path:
+    """Devuelve la ruta resuelta solo si queda dentro de `base` (por defecto, la carpeta actual).
+
+    Evita path traversal: rechaza `..`, rutas absolutas fuera del proyecto y enlaces simbólicos que escapen.
+    """
+    raiz = (base or Path.cwd()).resolve()
+    destino = (raiz / Path(ruta)).resolve()
+    if destino != raiz and raiz not in destino.parents:
+        raise ErrorSonar(f"Ruta no permitida: {ruta}. Debe estar dentro de {raiz}.")
+    return destino
+
+
+def generar(cliente: Cliente, carpeta: Path | str, base: Path | None = None) -> dict:
+    carpeta = ruta_segura(carpeta, base)
     carpeta.mkdir(parents=True, exist_ok=True)
     datos = recolectar(cliente)
     (carpeta / "datos.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -244,7 +257,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--resumen", type=Path, help="imprime en Markdown el resumen de un datos.json ya generado")
     a = ap.parse_args(argv)
     if a.resumen:
-        print(resumen_markdown(json.loads(a.resumen.read_text(encoding="utf-8"))))
+        try:
+            archivo = ruta_segura(a.resumen)
+        except ErrorSonar as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 2
+        print(resumen_markdown(json.loads(archivo.read_text(encoding="utf-8"))))
         return 0
     token = os.environ.get("SONAR_TOKEN", "")
     if not a.proyecto:
